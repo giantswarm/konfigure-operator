@@ -11,6 +11,8 @@ spec:
     kind: ManagementClusterConfiguration
     listKind: ManagementClusterConfigurationList
     plural: managementclusterconfigurations
+    shortNames:
+    - mcc
     singular: managementclusterconfiguration
   scope: Namespaced
   versions:

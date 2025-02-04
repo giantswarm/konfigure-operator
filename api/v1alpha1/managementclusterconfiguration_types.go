@@ -100,6 +100,7 @@ type ManagementClusterConfigurationStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=mcc
 
 // ManagementClusterConfiguration is the Schema for the managementclusterconfigurations API.
 type ManagementClusterConfiguration struct {
