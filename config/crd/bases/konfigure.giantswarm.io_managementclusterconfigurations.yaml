@@ -180,6 +180,21 @@ spec:
                   - type
                   type: object
                 type: array
+              failures:
+                items:
+                  properties:
+                    apiVersion:
+                      type: string
+                    kind:
+                      type: string
+                    message:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                type: array
               lastAppliedRevision:
                 type: string
               lastAttemptedRevision:

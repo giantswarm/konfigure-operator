@@ -108,7 +108,18 @@ type ManagementClusterConfigurationStatus struct {
 	LastHandledReconcileAt string `json:"lastHandledReconcileAt,omitempty"`
 
 	// +optional
+	Failures []FailureStatus `json:"failures,omitempty"`
+
+	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+type FailureStatus struct {
+	ApiVersion string `json:"apiVersion,omitempty"`
+	Kind       string `json:"kind,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	Message    string `json:"message,omitempty"`
 }
 
 // +kubebuilder:object:root=true
