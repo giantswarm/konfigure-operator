@@ -94,8 +94,21 @@ type Reconciliation struct {
 
 // ManagementClusterConfigurationStatus defines the observed state of ManagementClusterConfiguration.
 type ManagementClusterConfigurationStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// ObservedGeneration is the last observed generation.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// +optional
+	LastAppliedRevision string `json:"lastAppliedRevision,omitempty"`
+
+	// +optional
+	LastAttemptedRevision string `json:"lastAttemptedRevision,omitempty"`
+
+	// +optional
+	LastHandledReconcileAt string `json:"lastHandledReconcileAt,omitempty"`
+
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
