@@ -28,8 +28,68 @@ type ManagementClusterConfigurationSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ManagementClusterConfiguration. Edit managementclusterconfiguration_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Sources
+	Sources Sources `json:"sources"`
+
+	// Encryption
+	Encryption Encryption `json:"encryption,omitempty"`
+
+	// Destination
+	Destination Destination `json:"destination,omitempty"`
+
+	// Configuration
+	Configuration Configuration `json:"configuration,omitempty"`
+
+	// Reconciliation
+	Reconciliation Reconciliation `json:"reconciliation,omitempty"`
+}
+
+type Sources struct {
+	Flux FluxSource `json:"flux,omitempty"`
+}
+
+type FluxSource struct {
+	Service       FluxSourceService       `json:"service"`
+	GitRepository FluxSourceGitRepository `json:"gitRepository"`
+}
+
+type FluxSourceService struct {
+	Url string `json:"url"`
+}
+
+type FluxSourceGitRepository struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+type Encryption struct {
+	Sops SopsEncryption `json:"sops,omitempty"`
+}
+
+type SopsEncryption struct {
+	KeysDirectory string `json:"keysDirectory,omitempty"`
+}
+
+type Destination struct {
+	Namespace string `json:"namespace"`
+}
+
+type Configuration struct {
+	Cluster      ClusterConfiguration      `json:"cluster,omitempty"`
+	Applications ApplicationsConfiguration `json:"applications,omitempty"`
+}
+
+type ClusterConfiguration struct {
+	Name string `json:"name"`
+}
+
+type ApplicationsConfiguration struct {
+	RegexMatchers []string `json:"regexMatchers,omitempty"`
+	ExactMatchers []string `json:"exactMatchers,omitempty"`
+}
+
+type Reconciliation struct {
+	Interval metav1.Duration `json:"interval"`
 }
 
 // ManagementClusterConfigurationStatus defines the observed state of ManagementClusterConfiguration.

@@ -41,10 +41,82 @@ spec:
             description: ManagementClusterConfigurationSpec defines the desired state
               of ManagementClusterConfiguration.
             properties:
-              foo:
-                description: Foo is an example field of ManagementClusterConfiguration.
-                  Edit managementclusterconfiguration_types.go to remove/update
-                type: string
+              configuration:
+                description: Configuration
+                properties:
+                  applications:
+                    properties:
+                      exactMatchers:
+                        items:
+                          type: string
+                        type: array
+                      regexMatchers:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  cluster:
+                    properties:
+                      name:
+                        type: string
+                    required:
+                    - name
+                    type: object
+                type: object
+              destination:
+                description: Destination
+                properties:
+                  namespace:
+                    type: string
+                required:
+                - namespace
+                type: object
+              encryption:
+                description: Encryption
+                properties:
+                  sops:
+                    properties:
+                      keysDirectory:
+                        type: string
+                    type: object
+                type: object
+              reconciliation:
+                description: Reconciliation
+                properties:
+                  interval:
+                    type: string
+                required:
+                - interval
+                type: object
+              sources:
+                description: Sources
+                properties:
+                  flux:
+                    properties:
+                      gitRepository:
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
+                      service:
+                        properties:
+                          url:
+                            type: string
+                        required:
+                        - url
+                        type: object
+                    required:
+                    - gitRepository
+                    - service
+                    type: object
+                type: object
+            required:
+            - sources
             type: object
           status:
             description: ManagementClusterConfigurationStatus defines the observed
