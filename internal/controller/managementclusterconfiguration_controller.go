@@ -24,6 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	konfigureService "github.com/giantswarm/konfigure/pkg/service"
+
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
@@ -47,9 +49,26 @@ type ManagementClusterConfigurationReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.1/pkg/reconcile
 func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	logger.Info("Reconciling ManagementClusterConfiguration")
+
+	konfigure, err := konfigureService.New(konfigureService.Config{
+		Log: logger,
+	})
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	cm, secret, err := konfigure.Generate(ctx, konfigureService.GenerateInput{})
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	logger.Info(cm.String())
+	logger.Info(secret.String())
 
 	return ctrl.Result{}, nil
 }

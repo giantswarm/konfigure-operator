@@ -63,7 +63,8 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
-        image: controller:latest
+        image: gsoci.azurecr.io/giantswarm/konfigure-operator:latest
+        imagePullPolicy: IfNotPresent
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
@@ -91,5 +92,20 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+        volumeMounts:
+          - mountPath: /tmp/konfigure-cache
+            name: cache
+          - mountPath: /sopsenv
+            name: sopsenv
+          - mountPath: /tmp
+            name: temp
+      volumes:
+        - emptyDir: {}
+          name: cache
+        - emptyDir:
+            medium: Memory
+          name: sopsenv
+        - emptyDir: {}
+          name: temp
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
