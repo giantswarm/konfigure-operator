@@ -18,13 +18,14 @@ package controller
 
 import (
 	"context"
+	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	konfigureService "github.com/giantswarm/konfigure/pkg/service"
+	konfigureFluxUpdater "github.com/giantswarm/konfigure/pkg/fluxupdater"
 
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
@@ -53,22 +54,39 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 	logger.Info("Reconciling ManagementClusterConfiguration")
 
-	konfigure, err := konfigureService.New(konfigureService.Config{
-		Log: logger,
+	updater, err := konfigureFluxUpdater.New(konfigureFluxUpdater.Config{
+		CacheDir:                "/tmp/konfigure-cache",
+		ApiServerHost:           os.Getenv("KUBERNETES_SERVICE_HOST"),
+		ApiServerPort:           os.Getenv("KUBERNETES_SERVICE_PORT"),
+		SourceControllerService: "source-controller.flux-giantswarm.svc",
+		GitRepository:           "flux-giantswarm/giantswarm-config",
 	})
 
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	cm, secret, err := konfigure.Generate(ctx, konfigureService.GenerateInput{})
-
+	err = updater.UpdateConfig()
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	logger.Info(cm.String())
-	logger.Info(secret.String())
+	//konfigure, err := konfigureService.New(konfigureService.Config{
+	//	Log: logger,
+	//})
+	//
+	//if err != nil {
+	//	return ctrl.Result{}, err
+	//}
+	//
+	//cm, secret, err := konfigure.Generate(ctx, konfigureService.GenerateInput{})
+	//
+	//if err != nil {
+	//	return ctrl.Result{}, err
+	//}
+	//
+	//logger.Info(cm.String())
+	//logger.Info(secret.String())
 
 	return ctrl.Result{}, nil
 }

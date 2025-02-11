@@ -1,0 +1,27 @@
+apiVersion: konfigure.giantswarm.io/v1alpha1
+kind: ManagementClusterConfiguration
+metadata:
+  name: example-1
+  namespace: konfigure-operator-system
+spec:
+  configuration:
+    applications:
+        exactMatchers:
+          - app-operator
+        regexMatchers: []
+    cluster:
+      name: golem
+  destination:
+    namespace: default
+  encryption:
+    sops:
+      keysDirectory: "/sopsenv"
+  reconciliation:
+    interval: 1m
+  sources:
+    flux:
+      gitRepository:
+        name: "giantswarm-config"
+        namespace: "flux-giantswarm"
+      service:
+        url: "source-controller.flux-giantswarm.svc"

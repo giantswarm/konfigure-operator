@@ -1,4 +1,4 @@
 ## Append samples of your project ##
 resources:
-- konfigure_v1alpha1_managementclusterconfiguration.yaml
+- example-1.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples
