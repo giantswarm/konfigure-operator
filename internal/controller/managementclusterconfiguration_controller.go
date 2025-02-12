@@ -22,10 +22,12 @@ import (
 	"os"
 	"path"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/giantswarm/konfigure/pkg/sopsenv"
 	sopsenvKey "github.com/giantswarm/konfigure/pkg/sopsenv/key"
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	controllerutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -156,7 +158,45 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	logger.Info("Successfully generated CM and Secret!")
 
 	logger.Info(cm.String())
+
+	desiredCm := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "laszlo-test",
+			Namespace: "default",
+		},
+	}
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredCm, func() error {
+		desiredCm.Data = cm.Data
+		return nil
+	})
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to create or update CM: %s", err))
+		return ctrl.Result{}, err
+	} else {
+		logger.Info("Successfully created or updated CM!")
+	}
+
 	logger.Info(secret.String())
+
+	desiredSecret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "laszlo-test",
+			Namespace: "default",
+		},
+	}
+
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
+		desiredSecret.Data = secret.Data
+		desiredSecret.StringData = secret.StringData
+		return nil
+	})
+
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to create or update Secret: %s", err))
+		return ctrl.Result{}, err
+	} else {
+		logger.Info("Successfully created or updated Secret!")
+	}
 
 	return ctrl.Result{}, nil
 }
