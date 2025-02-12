@@ -28,6 +28,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ma
 # FROM gcr.io/distroless/static:nonroot
 FROM alpine:3.21
 WORKDIR /
+# RUN apk --no-cache add git
 COPY --from=builder /workspace/manager .
 USER 65532:65532
 

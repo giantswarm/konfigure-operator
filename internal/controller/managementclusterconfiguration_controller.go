@@ -18,7 +18,14 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/giantswarm/konfigure/pkg/sopsenv"
+	sopsenvKey "github.com/giantswarm/konfigure/pkg/sopsenv/key"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -26,6 +33,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	konfigureFluxUpdater "github.com/giantswarm/konfigure/pkg/fluxupdater"
+	konfigureService "github.com/giantswarm/konfigure/pkg/service"
+	konfigureVaultClient "github.com/giantswarm/konfigure/pkg/vaultclient"
 
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
@@ -52,10 +61,47 @@ type ManagementClusterConfigurationReconciler struct {
 func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("Reconciling ManagementClusterConfiguration")
+	logger.Info("Fetching ManagementClusterConfiguration")
 
+	configurationCr := &konfigurev1alpha1.ManagementClusterConfiguration{}
+	err := r.Get(ctx, req.NamespacedName, configurationCr)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// If the custom resource is not found then it usually means that it was deleted or not created
+			// In this way, we will stop the reconciliation
+			logger.Info("ManagementClusterConfiguration resource not found. Ignoring since object must be deleted")
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		logger.Error(err, "Failed to get ManagementClusterConfiguration")
+		return ctrl.Result{}, err
+	}
+
+	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", configurationCr.GetNamespace(), configurationCr.GetName()))
+
+	// SOPS environment
+	cfg := sopsenv.SOPSEnvConfig{
+		KeysDir:    "/sopsenv",
+		KeysSource: sopsenvKey.KeysSourceKubernetes,
+		Logger:     logger,
+	}
+
+	sopsEnv, err := sopsenv.NewSOPSEnv(cfg)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = sopsEnv.Setup(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sopsEnv.GetKeysDir()))
+
+	// Konfigure cache
+	cacheDir := "/tmp/konfigure-cache"
 	updater, err := konfigureFluxUpdater.New(konfigureFluxUpdater.Config{
-		CacheDir:                "/tmp/konfigure-cache",
+		CacheDir:                cacheDir,
 		ApiServerHost:           os.Getenv("KUBERNETES_SERVICE_HOST"),
 		ApiServerPort:           os.Getenv("KUBERNETES_SERVICE_PORT"),
 		SourceControllerService: "source-controller.flux-giantswarm.svc",
@@ -71,22 +117,46 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		return ctrl.Result{}, err
 	}
 
-	//konfigure, err := konfigureService.New(konfigureService.Config{
-	//	Log: logger,
-	//})
-	//
-	//if err != nil {
-	//	return ctrl.Result{}, err
-	//}
-	//
-	//cm, secret, err := konfigure.Generate(ctx, konfigureService.GenerateInput{})
-	//
-	//if err != nil {
-	//	return ctrl.Result{}, err
-	//}
-	//
-	//logger.Info(cm.String())
-	//logger.Info(secret.String())
+	logger.Info("Konfigure cache successfully updated")
+
+	// Setting up konfigure service
+	// TODO It would be nice to be able to create the service vaultless
+	vaultClient, err := konfigureVaultClient.NewClientUsingEnv(ctx)
+
+	konfigure, err := konfigureService.New(konfigureService.Config{
+		VaultClient: vaultClient,
+
+		Log:            logger,
+		Dir:            path.Join(cacheDir, "latest"),
+		Installation:   configurationCr.Spec.Configuration.Cluster.Name,
+		SOPSKeysDir:    "/sopsenv",
+		SOPSKeysSource: "local",
+		Verbose:        true,
+	})
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	cm, secret, err := konfigure.Generate(ctx, konfigureService.GenerateInput{
+		App:       "app-operator",
+		Name:      "laszlo-test",
+		Namespace: "default",
+		// Must set, keep it main or maybe fetch from the string in /tmp/konfigure-cache/lastarchive
+		// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
+		// fault anyway cos the pulled source from source-controller does not have the .git metadata.
+		VersionOverride: "main",
+	})
+
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to generate CM and Secret: %s", err))
+		return ctrl.Result{}, err
+	}
+
+	logger.Info("Successfully generated CM and Secret!")
+
+	logger.Info(cm.String())
+	logger.Info(secret.String())
 
 	return ctrl.Result{}, nil
 }
