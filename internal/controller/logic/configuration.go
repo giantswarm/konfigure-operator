@@ -2,6 +2,7 @@ package logic
 
 import (
 	"regexp"
+	"slices"
 
 	mapset "github.com/deckarep/golang-set/v2"
 
@@ -26,6 +27,10 @@ func GetAppsToReconcile(dir string, cr *konfigurev1alpha1.Configuration) (match 
 // filterApps Filter apps that match any of the exact or regex matchers and also return
 // a list of exact matcher that was requested but not found a match for them.
 func filterApps(all, exactMatchers, regexMatchers []string) (match []string, miss []string, err error) {
+	if all == nil {
+		return []string{}, []string{}, nil
+	}
+
 	if len(exactMatchers) == 0 && len(regexMatchers) == 0 {
 		return all, []string{}, nil
 	}
@@ -59,5 +64,11 @@ func filterApps(all, exactMatchers, regexMatchers []string) (match []string, mis
 		}
 	}
 
-	return matchSet.ToSlice(), missSet.ToSlice(), nil
+	matches := matchSet.ToSlice()
+	misses := missSet.ToSlice()
+
+	slices.Sort(matches)
+	slices.Sort(misses)
+
+	return matches, misses, nil
 }
