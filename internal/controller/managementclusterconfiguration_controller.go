@@ -19,24 +19,18 @@ package controller
 import (
 	"context"
 	"fmt"
-	"os"
-	"path"
+	"strings"
 
-	"github.com/giantswarm/konfigure/pkg/sopsenv"
-	sopsenvKey "github.com/giantswarm/konfigure/pkg/sopsenv/key"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	controllerutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	konfigureFluxUpdater "github.com/giantswarm/konfigure/pkg/fluxupdater"
+	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
+	"github.com/giantswarm/konfigure-operator/internal/konfigure"
+
 	konfigureService "github.com/giantswarm/konfigure/pkg/service"
-	konfigureVaultClient "github.com/giantswarm/konfigure/pkg/vaultclient"
 
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
@@ -63,10 +57,8 @@ type ManagementClusterConfigurationReconciler struct {
 func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("Fetching ManagementClusterConfiguration")
-
-	configurationCr := &konfigurev1alpha1.ManagementClusterConfiguration{}
-	err := r.Get(ctx, req.NamespacedName, configurationCr)
+	// Get resource under reconciliation
+	cr, err := r.getCustomResource(ctx, req)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// If the custom resource is not found then it usually means that it was deleted or not created
@@ -74,131 +66,142 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			logger.Info("ManagementClusterConfiguration resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
-		logger.Error(err, "Failed to get ManagementClusterConfiguration")
+
 		return ctrl.Result{}, err
 	}
 
-	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", configurationCr.GetNamespace(), configurationCr.GetName()))
-
-	// SOPS environment
-	cfg := sopsenv.SOPSEnvConfig{
-		KeysDir:    "/sopsenv",
-		KeysSource: sopsenvKey.KeysSourceKubernetes,
-		Logger:     logger,
-	}
-
-	sopsEnv, err := sopsenv.NewSOPSEnv(cfg)
+	// Initialize Konfigure
+	service, err := r.initializeKonfigure(ctx, cr)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	appsToReconcile, missedExactMatchers, err := logic.GetAppsToReconcile(service.GetDir(), &cr.Spec.Configuration)
+
+	logger.Info(fmt.Sprintf("Apps to reconcile: %s", strings.Join(appsToReconcile, ",")))
+	logger.Info(fmt.Sprintf("Missed exact matchers: %s", strings.Join(missedExactMatchers, ",")))
+
+	//cm, secret, err := service.Generate(ctx, konfigureService.GenerateInput{
+	//	App:       "app-operator",
+	//	Name:      "laszlo-test",
+	//	Namespace: "default",
+	//	// Must set, keep it main or maybe fetch from the string in /tmp/konfigure-cache/lastarchive
+	//	// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
+	//	// fault anyway cos the pulled source from source-controller does not have the .git metadata.
+	//	VersionOverride: "main",
+	//})
+	//
+	//if err != nil {
+	//	logger.Error(err, fmt.Sprintf("Failed to generate CM and Secret: %s", err))
+	//	return ctrl.Result{}, err
+	//}
+	//
+	//logger.Info("Successfully generated CM and Secret!")
+	//
+	//logger.Info(cm.String())
+	//
+	//desiredCm := v1.ConfigMap{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "laszlo-test",
+	//		Namespace: "default",
+	//	},
+	//}
+	//_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredCm, func() error {
+	//	desiredCm.Data = cm.Data
+	//	return nil
+	//})
+	//if err != nil {
+	//	logger.Error(err, fmt.Sprintf("Failed to create or update CM: %s", err))
+	//	return ctrl.Result{}, err
+	//} else {
+	//	logger.Info("Successfully created or updated CM!")
+	//}
+	//
+	//logger.Info(secret.String())
+	//
+	//desiredSecret := v1.Secret{
+	//	ObjectMeta: metav1.ObjectMeta{
+	//		Name:      "laszlo-test",
+	//		Namespace: "default",
+	//	},
+	//}
+	//
+	//_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
+	//	desiredSecret.Data = secret.Data
+	//	desiredSecret.StringData = secret.StringData
+	//	return nil
+	//})
+	//
+	//if err != nil {
+	//	logger.Error(err, fmt.Sprintf("Failed to create or update Secret: %s", err))
+	//	return ctrl.Result{}, err
+	//} else {
+	//	logger.Info("Successfully created or updated Secret!")
+	//}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *ManagementClusterConfigurationReconciler) getCustomResource(ctx context.Context, req ctrl.Request) (*konfigurev1alpha1.ManagementClusterConfiguration, error) {
+	logger := log.FromContext(ctx)
+
+	cr := &konfigurev1alpha1.ManagementClusterConfiguration{}
+	err := r.Get(ctx, req.NamespacedName, cr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
+
+	return cr, nil
+}
+
+func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx context.Context, cr *konfigurev1alpha1.ManagementClusterConfiguration) (*konfigureService.Service, error) {
+	logger := log.FromContext(ctx)
+
+	// SOPS environment
+	sopsKeysDir := "/sopsenv"
+	sopsEnv, err := konfigure.InitializeSopsEnvFromKubernetes(ctx, sopsKeysDir)
+
+	if err != nil {
+		return nil, err
 	}
 
 	err = sopsEnv.Setup(ctx)
 	if err != nil {
-		return ctrl.Result{}, err
+		return nil, err
 	}
 
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sopsEnv.GetKeysDir()))
 
 	// Konfigure cache
 	cacheDir := "/tmp/konfigure-cache"
-	updater, err := konfigureFluxUpdater.New(konfigureFluxUpdater.Config{
-		CacheDir:                cacheDir,
-		ApiServerHost:           os.Getenv("KUBERNETES_SERVICE_HOST"),
-		ApiServerPort:           os.Getenv("KUBERNETES_SERVICE_PORT"),
-		SourceControllerService: "source-controller.flux-giantswarm.svc",
-		GitRepository:           "flux-giantswarm/giantswarm-config",
-	})
+
+	fluxUpdater, err := konfigure.InitializeFluxUpdater(cacheDir, cr.Spec.Sources.Flux.Service.Url, cr.Spec.Sources.Flux.GitRepository.Namespace, cr.Spec.Sources.Flux.GitRepository.Name)
 
 	if err != nil {
-		return ctrl.Result{}, err
+		return nil, err
 	}
 
-	err = updater.UpdateConfig()
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	logger.Info("Konfigure cache successfully updated")
-
-	// Setting up konfigure service
-	// TODO It would be nice to be able to create the service vaultless
-	vaultClient, err := konfigureVaultClient.NewClientUsingEnv(ctx)
-
-	konfigure, err := konfigureService.New(konfigureService.Config{
-		VaultClient: vaultClient,
-
-		Log:            logger,
-		Dir:            path.Join(cacheDir, "latest"),
-		Installation:   configurationCr.Spec.Configuration.Cluster.Name,
-		SOPSKeysDir:    "/sopsenv",
-		SOPSKeysSource: "local",
-		Verbose:        true,
-	})
+	err = fluxUpdater.UpdateConfig()
 
 	if err != nil {
-		return ctrl.Result{}, err
+		return nil, err
 	}
 
-	cm, secret, err := konfigure.Generate(ctx, konfigureService.GenerateInput{
-		App:       "app-operator",
-		Name:      "laszlo-test",
-		Namespace: "default",
-		// Must set, keep it main or maybe fetch from the string in /tmp/konfigure-cache/lastarchive
-		// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
-		// fault anyway cos the pulled source from source-controller does not have the .git metadata.
-		VersionOverride: "main",
-	})
+	logger.Info("Konfigure cache successfully updated!")
+
+	// Konfigure service
+	service, err := konfigure.InitializeService(ctx, fluxUpdater.CacheDir, sopsKeysDir, cr.Spec.Configuration.Cluster.Name)
 
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to generate CM and Secret: %s", err))
-		return ctrl.Result{}, err
+		return nil, err
 	}
 
-	logger.Info("Successfully generated CM and Secret!")
+	logger.Info("Konfigure service successfully initialized!")
 
-	logger.Info(cm.String())
-
-	desiredCm := v1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "laszlo-test",
-			Namespace: "default",
-		},
-	}
-	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredCm, func() error {
-		desiredCm.Data = cm.Data
-		return nil
-	})
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to create or update CM: %s", err))
-		return ctrl.Result{}, err
-	} else {
-		logger.Info("Successfully created or updated CM!")
-	}
-
-	logger.Info(secret.String())
-
-	desiredSecret := v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "laszlo-test",
-			Namespace: "default",
-		},
-	}
-
-	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
-		desiredSecret.Data = secret.Data
-		desiredSecret.StringData = secret.StringData
-		return nil
-	})
-
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to create or update Secret: %s", err))
-		return ctrl.Result{}, err
-	} else {
-		logger.Info("Successfully created or updated Secret!")
-	}
-
-	return ctrl.Result{}, nil
+	return service, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
