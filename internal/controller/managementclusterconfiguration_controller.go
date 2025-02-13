@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"k8s.io/api/core/v1"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -76,28 +77,26 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		return ctrl.Result{}, err
 	}
 
-	appsToReconcile, missedExactMatchers, err := logic.GetAppsToReconcile(service.GetDir(), &cr.Spec.Configuration)
+	appsToRender, missedExactMatchers, err := logic.GetAppsToReconcile(service.GetDir(), &cr.Spec.Configuration)
 
-	logger.Info(fmt.Sprintf("Apps to reconcile: %s", strings.Join(appsToReconcile, ",")))
+	logger.Info(fmt.Sprintf("Apps to reconcile: %s", strings.Join(appsToRender, ",")))
 	logger.Info(fmt.Sprintf("Missed exact matchers: %s", strings.Join(missedExactMatchers, ",")))
 
-	//cm, secret, err := service.Generate(ctx, konfigureService.GenerateInput{
-	//	App:       "app-operator",
-	//	Name:      "laszlo-test",
-	//	Namespace: "default",
-	//	// Must set, keep it main or maybe fetch from the string in /tmp/konfigure-cache/lastarchive
-	//	// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
-	//	// fault anyway cos the pulled source from source-controller does not have the .git metadata.
-	//	VersionOverride: "main",
-	//})
-	//
-	//if err != nil {
-	//	logger.Error(err, fmt.Sprintf("Failed to generate CM and Secret: %s", err))
-	//	return ctrl.Result{}, err
-	//}
-	//
-	//logger.Info("Successfully generated CM and Secret!")
-	//
+	for _, appToRender := range appsToRender {
+		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, cr.Spec.Destination.Namespace)
+
+		if err != nil {
+			// TODO Collect for status updates
+			logger.Error(err, fmt.Sprintf("Failed to render app configuration for: %s", appToRender))
+		}
+
+		logger.Info(fmt.Sprintf("Succesfully rendered app configuration for: %s", appToRender))
+		logger.Info(fmt.Sprintf("ConfigMap for %s: %s", appsToRender, configmap))
+		logger.Info(fmt.Sprintf("Secret for %s: %s", appsToRender, secret))
+	}
+
+	// TODO Handles misses for status updates
+
 	//logger.Info(cm.String())
 	//
 	//desiredCm := v1.ConfigMap{
@@ -202,6 +201,19 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 	logger.Info("Konfigure service successfully initialized!")
 
 	return service, err
+}
+
+func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, targetNamespace string) (*v1.ConfigMap, *v1.Secret, error) {
+	return service.Generate(ctx, konfigureService.GenerateInput{
+		App: app,
+		// TODO Generate unique name
+		Name:      fmt.Sprintf("%s-%s", app, "laszlo-test"),
+		Namespace: targetNamespace,
+		// Must set, keep it main or maybe fetch from the string in /tmp/konfigure-cache/lastarchive
+		// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
+		// fault anyway cos the pulled source from source-controller does not have the .git metadata.
+		VersionOverride: "main",
+	})
 }
 
 // SetupWithManager sets up the controller with the Manager.
