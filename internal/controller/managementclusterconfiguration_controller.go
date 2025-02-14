@@ -23,11 +23,12 @@ import (
 	"github.com/giantswarm/konfigure/pkg/sopsenv"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strings"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,24 +63,21 @@ type ManagementClusterConfigurationReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.1/pkg/reconcile
 func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+	reconcileStart := time.Now()
 
 	// Get resource under reconciliation
-	cr, err := r.getCustomResource(ctx, req)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// If the custom resource is not found then it usually means that it was deleted or not created
-			// In this way, we will stop the reconciliation
-			logger.Info("ManagementClusterConfiguration resource not found. Ignoring since object must be deleted")
-			return ctrl.Result{}, nil
-		}
-
-		return ctrl.Result{}, err
+	cr := &konfigurev1alpha1.ManagementClusterConfiguration{}
+	if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if cr.Generation == cr.Status.ObservedGeneration {
-		logger.Info(fmt.Sprintf("Generation matches observed generation, skipping reconciliation for: %s/%s", cr.Namespace, cr.Name))
-		return ctrl.Result{}, nil
-	}
+	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
+
+	// TODO This is not that simple ^^
+	//if cr.Generation == cr.Status.ObservedGeneration {
+	//	logger.Info(fmt.Sprintf("Generation matches observed generation, skipping reconciliation for: %s/%s", cr.Namespace, cr.Name))
+	//	return ctrl.Result{}, nil
+	//}
 
 	// Initialize Konfigure
 	sops, err := r.initializeSopsEnv(ctx)
@@ -88,7 +86,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	}
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
 
-	fluxUpdater, err := r.initializeFluxUpdater(ctx, cr.Spec.Sources.Flux)
+	fluxUpdater, err := r.initializeFluxUpdater(cr.Spec.Sources.Flux)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -193,24 +191,10 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		return ctrl.Result{}, err
 	}
 
-	// TODO Handle reschedule based on interval or differently in case if failures.
+	// TODO Handle reschedule in case if failures.
+	logger.Info(fmt.Sprintf("Reconciliation finished in %s, next run in %s", time.Since(reconcileStart).String(), cr.Spec.Reconciliation.Interval.Duration.String()))
 
-	return ctrl.Result{}, nil
-}
-
-func (r *ManagementClusterConfigurationReconciler) getCustomResource(ctx context.Context, req ctrl.Request) (*konfigurev1alpha1.ManagementClusterConfiguration, error) {
-	logger := log.FromContext(ctx)
-
-	cr := &konfigurev1alpha1.ManagementClusterConfiguration{}
-	err := r.Get(ctx, req.NamespacedName, cr)
-
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
-
-	return cr, nil
+	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil
 }
 
 func (r *ManagementClusterConfigurationReconciler) initializeSopsEnv(ctx context.Context) (*sopsenv.SOPSEnv, error) {
@@ -229,7 +213,7 @@ func (r *ManagementClusterConfigurationReconciler) initializeSopsEnv(ctx context
 	return sopsEnv, nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) initializeFluxUpdater(ctx context.Context, fluxSource konfigurev1alpha1.FluxSource) (*fluxupdater.FluxUpdater, error) {
+func (r *ManagementClusterConfigurationReconciler) initializeFluxUpdater(fluxSource konfigurev1alpha1.FluxSource) (*fluxupdater.FluxUpdater, error) {
 	// Konfigure cache
 	cacheDir := "/tmp/konfigure-cache"
 
@@ -311,7 +295,9 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 // SetupWithManager sets up the controller with the Manager.
 func (r *ManagementClusterConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&konfigurev1alpha1.ManagementClusterConfiguration{}).
+		For(&konfigurev1alpha1.ManagementClusterConfiguration{}, builder.WithPredicates(
+			predicate.GenerationChangedPredicate{},
+		)).
 		Named("managementclusterconfiguration").
 		Complete(r)
 }
