@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -82,61 +84,50 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	logger.Info(fmt.Sprintf("Apps to reconcile: %s", strings.Join(appsToRender, ",")))
 	logger.Info(fmt.Sprintf("Missed exact matchers: %s", strings.Join(missedExactMatchers, ",")))
 
+	// TODO Handles misses for status updates
+
+	failures := make(map[string]string)
 	for _, appToRender := range appsToRender {
 		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, cr.Spec.Destination.Namespace)
 
 		if err != nil {
 			// TODO Collect for status updates
 			logger.Error(err, fmt.Sprintf("Failed to render app configuration for: %s", appToRender))
+
+			failures[appToRender] = err.Error()
+			continue
 		}
 
 		logger.Info(fmt.Sprintf("Succesfully rendered app configuration for: %s", appToRender))
-		logger.Info(fmt.Sprintf("ConfigMap for %s: %s", appsToRender, configmap))
-		logger.Info(fmt.Sprintf("Secret for %s: %s", appsToRender, secret))
+
+		logger.Info(fmt.Sprintf("ConfigMap for %s: %s", appToRender, configmap))
+		logger.Info(fmt.Sprintf("Secret for %s: %s", appToRender, secret))
+
+		err = r.applyConfigMap(ctx, configmap)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to apply configmap %s/%s for app: %s", configmap.Namespace, configmap.Name, appToRender))
+
+			failures[appToRender] = err.Error()
+			continue
+		}
+
+		err = r.applySecret(ctx, secret)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to apply secret %s/%s for app: %s", secret.Namespace, secret.Name, appToRender))
+
+			failures[appToRender] = err.Error()
+			continue
+		}
+
+		logger.Info(fmt.Sprintf("Succesfully applied rendered configmap and secret for: %s", appToRender))
+		// TODO Handle status updates for failures.
 	}
 
-	// TODO Handles misses for status updates
+	logger.Info(fmt.Sprintf("Failures: %s", failures))
 
-	//logger.Info(cm.String())
-	//
-	//desiredCm := v1.ConfigMap{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      "laszlo-test",
-	//		Namespace: "default",
-	//	},
-	//}
-	//_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredCm, func() error {
-	//	desiredCm.Data = cm.Data
-	//	return nil
-	//})
-	//if err != nil {
-	//	logger.Error(err, fmt.Sprintf("Failed to create or update CM: %s", err))
-	//	return ctrl.Result{}, err
-	//} else {
-	//	logger.Info("Successfully created or updated CM!")
-	//}
-	//
-	//logger.Info(secret.String())
-	//
-	//desiredSecret := v1.Secret{
-	//	ObjectMeta: metav1.ObjectMeta{
-	//		Name:      "laszlo-test",
-	//		Namespace: "default",
-	//	},
-	//}
-	//
-	//_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
-	//	desiredSecret.Data = secret.Data
-	//	desiredSecret.StringData = secret.StringData
-	//	return nil
-	//})
-	//
-	//if err != nil {
-	//	logger.Error(err, fmt.Sprintf("Failed to create or update Secret: %s", err))
-	//	return ctrl.Result{}, err
-	//} else {
-	//	logger.Info("Successfully created or updated Secret!")
-	//}
+	// TODO Handle status update for CR.
+
+	// TODO Handle reschedule based on interval or differently in case if failures.
 
 	return ctrl.Result{}, nil
 }
@@ -214,6 +205,38 @@ func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx co
 		// fault anyway cos the pulled source from source-controller does not have the .git metadata.
 		VersionOverride: "main",
 	})
+}
+
+func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
+	desiredCm := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configmap.Name,
+			Namespace: configmap.Namespace,
+		},
+	}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &desiredCm, func() error {
+		desiredCm.Data = configmap.Data
+		return nil
+	})
+
+	return err
+}
+
+func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, secret *v1.Secret) error {
+	desiredSecret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secret.Name,
+			Namespace: secret.Namespace,
+		},
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
+		desiredSecret.Data = secret.Data
+		desiredSecret.StringData = secret.StringData
+		return nil
+	})
+
+	return err
 }
 
 // SetupWithManager sets up the controller with the Manager.
