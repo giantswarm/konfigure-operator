@@ -6,8 +6,7 @@ metadata:
 spec:
   configuration:
     applications:
-        exactMatchers:
-          - app-operator
+        exactMatchers: []
         regexMatchers: []
     cluster:
       name: golem
