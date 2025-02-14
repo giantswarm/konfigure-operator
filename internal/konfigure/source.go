@@ -30,3 +30,15 @@ func InitializeFluxUpdater(cacheDir, sourceControllerService, gitRepositoryNames
 
 	return updater, nil
 }
+
+func GetLastArchiveSHA(cacheDir string) (string, error) {
+	bytes, err := os.ReadFile(path.Join(cacheDir, "lastarchive"))
+	if err != nil {
+		return "", err
+	}
+
+	content := string(bytes)
+	parts := strings.Split(content, ".")
+
+	return parts[0], nil
+}

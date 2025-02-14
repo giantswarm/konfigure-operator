@@ -183,15 +183,9 @@ spec:
               failures:
                 items:
                   properties:
-                    apiVersion:
-                      type: string
-                    kind:
+                    appName:
                       type: string
                     message:
-                      type: string
-                    name:
-                      type: string
-                    namespace:
                       type: string
                   type: object
                 type: array

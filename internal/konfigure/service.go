@@ -24,7 +24,8 @@ func InitializeService(ctx context.Context, cacheDir, sopsKeysDir, installation 
 		Installation:   installation,
 		SOPSKeysDir:    sopsKeysDir,
 		SOPSKeysSource: "local",
-		Verbose:        true,
+		// TODO Does it make sense to be able to toggle this?
+		Verbose: false,
 	})
 
 	if err != nil {

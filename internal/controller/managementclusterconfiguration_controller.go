@@ -19,10 +19,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/giantswarm/konfigure/pkg/fluxupdater"
+	"github.com/giantswarm/konfigure/pkg/sopsenv"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -73,8 +76,25 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		return ctrl.Result{}, err
 	}
 
+	if cr.Generation == cr.Status.ObservedGeneration {
+		logger.Info(fmt.Sprintf("Generation matches observed generation, skipping reconciliation for: %s/%s", cr.Namespace, cr.Name))
+		return ctrl.Result{}, nil
+	}
+
 	// Initialize Konfigure
-	service, err := r.initializeKonfigure(ctx, cr)
+	sops, err := r.initializeSopsEnv(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
+
+	fluxUpdater, err := r.initializeFluxUpdater(ctx, cr.Spec.Sources.Flux)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	logger.Info("Konfigure cache successfully updated!")
+
+	service, err := r.initializeKonfigure(ctx, sops.GetKeysDir(), fluxUpdater.CacheDir, cr.Spec.Configuration.Cluster.Name)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -100,8 +120,8 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 		logger.Info(fmt.Sprintf("Succesfully rendered app configuration for: %s", appToRender))
 
-		logger.Info(fmt.Sprintf("ConfigMap for %s: %s", appToRender, configmap))
-		logger.Info(fmt.Sprintf("Secret for %s: %s", appToRender, secret))
+		//logger.Info(fmt.Sprintf("ConfigMap for %s: %s", appToRender, configmap))
+		//logger.Info(fmt.Sprintf("Secret for %s: %s", appToRender, secret))
 
 		err = r.applyConfigMap(ctx, configmap)
 		if err != nil {
@@ -120,12 +140,58 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		}
 
 		logger.Info(fmt.Sprintf("Succesfully applied rendered configmap and secret for: %s", appToRender))
-		// TODO Handle status updates for failures.
 	}
 
+	// Status update for failures
 	logger.Info(fmt.Sprintf("Failures: %s", failures))
 
-	// TODO Handle status update for CR.
+	cr.Status.Failures = []konfigurev1alpha1.FailureStatus{}
+	for failedAppName, failureMessage := range failures {
+		cr.Status.Failures = append(cr.Status.Failures, konfigurev1alpha1.FailureStatus{
+			AppName: failedAppName,
+			Message: failureMessage,
+		})
+	}
+
+	cr.Status.ObservedGeneration = cr.ObjectMeta.Generation
+	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
+
+	revision, err := konfigure.GetLastArchiveSHA(fluxUpdater.CacheDir)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to get last archive SHA from: %s", service.GetDir()))
+		revision = "unknown"
+	}
+
+	cr.Status.LastAttemptedRevision = revision
+
+	cr.Status.Conditions = []metav1.Condition{}
+	if len(failures) == 0 {
+		cr.Status.LastAppliedRevision = revision
+
+		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionTrue,
+			ObservedGeneration: cr.ObjectMeta.Generation,
+			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
+			Reason:             "ReconciliationSucceeded",
+			Message:            fmt.Sprintf("Applied revision: %s", revision),
+		})
+	} else {
+		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: cr.ObjectMeta.Generation,
+			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
+			Reason:             "ReconciliationFailed",
+			Message:            fmt.Sprintf("Attempted revision: %s", revision),
+		})
+	}
+
+	err = r.Status().Update(ctx, cr)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to update status for: %s/%s", cr.GetNamespace(), cr.GetName()))
+		return ctrl.Result{}, err
+	}
 
 	// TODO Handle reschedule based on interval or differently in case if failures.
 
@@ -147,10 +213,7 @@ func (r *ManagementClusterConfigurationReconciler) getCustomResource(ctx context
 	return cr, nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx context.Context, cr *konfigurev1alpha1.ManagementClusterConfiguration) (*konfigureService.Service, error) {
-	logger := log.FromContext(ctx)
-
-	// SOPS environment
+func (r *ManagementClusterConfigurationReconciler) initializeSopsEnv(ctx context.Context) (*sopsenv.SOPSEnv, error) {
 	sopsKeysDir := "/sopsenv"
 	sopsEnv, err := konfigure.InitializeSopsEnvFromKubernetes(ctx, sopsKeysDir)
 
@@ -160,15 +223,17 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 
 	err = sopsEnv.Setup(ctx)
 	if err != nil {
-		return nil, err
+		return sopsEnv, err
 	}
 
-	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sopsEnv.GetKeysDir()))
+	return sopsEnv, nil
+}
 
+func (r *ManagementClusterConfigurationReconciler) initializeFluxUpdater(ctx context.Context, fluxSource konfigurev1alpha1.FluxSource) (*fluxupdater.FluxUpdater, error) {
 	// Konfigure cache
 	cacheDir := "/tmp/konfigure-cache"
 
-	fluxUpdater, err := konfigure.InitializeFluxUpdater(cacheDir, cr.Spec.Sources.Flux.Service.Url, cr.Spec.Sources.Flux.GitRepository.Namespace, cr.Spec.Sources.Flux.GitRepository.Name)
+	fluxUpdater, err := konfigure.InitializeFluxUpdater(cacheDir, fluxSource.Service.Url, fluxSource.GitRepository.Namespace, fluxSource.GitRepository.Name)
 
 	if err != nil {
 		return nil, err
@@ -177,13 +242,17 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 	err = fluxUpdater.UpdateConfig()
 
 	if err != nil {
-		return nil, err
+		return fluxUpdater, err
 	}
 
-	logger.Info("Konfigure cache successfully updated!")
+	return fluxUpdater, nil
+}
+
+func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx context.Context, sopsKeysDir, cacheDir, installation string) (*konfigureService.Service, error) {
+	logger := log.FromContext(ctx)
 
 	// Konfigure service
-	service, err := konfigure.InitializeService(ctx, fluxUpdater.CacheDir, sopsKeysDir, cr.Spec.Configuration.Cluster.Name)
+	service, err := konfigure.InitializeService(ctx, cacheDir, sopsKeysDir, installation)
 
 	if err != nil {
 		return nil, err

@@ -105,7 +105,7 @@ type ManagementClusterConfigurationStatus struct {
 	LastAttemptedRevision string `json:"lastAttemptedRevision,omitempty"`
 
 	// +optional
-	LastHandledReconcileAt string `json:"lastHandledReconcileAt,omitempty"`
+	LastReconciledAt string `json:"lastReconciledAt,omitempty"`
 
 	// +optional
 	Failures []FailureStatus `json:"failures,omitempty"`
@@ -115,11 +115,8 @@ type ManagementClusterConfigurationStatus struct {
 }
 
 type FailureStatus struct {
-	ApiVersion string `json:"apiVersion,omitempty"`
-	Kind       string `json:"kind,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Namespace  string `json:"namespace,omitempty"`
-	Message    string `json:"message,omitempty"`
+	AppName string `json:"appName,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 // +kubebuilder:object:root=true
