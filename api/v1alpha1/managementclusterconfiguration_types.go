@@ -92,7 +92,13 @@ type ApplicationMatchers struct {
 type Reconciliation struct {
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
+	// +required
 	Interval metav1.Duration `json:"interval"`
+
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
+	// +optional
+	RetryInterval *metav1.Duration `json:"retryInterval,omitempty"`
 }
 
 // ManagementClusterConfigurationStatus defines the observed state of ManagementClusterConfiguration.

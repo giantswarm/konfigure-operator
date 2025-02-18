@@ -95,6 +95,9 @@ spec:
                   interval:
                     pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
                     type: string
+                  retryInterval:
+                    pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
+                    type: string
                 required:
                 - interval
                 type: object
