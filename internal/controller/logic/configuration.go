@@ -31,36 +31,36 @@ func filterApps(all, includeExactMatchers, includeRegexMatchers, excludeExactMat
 		return []string{}, []string{}, nil
 	}
 
-	if len(includeExactMatchers) == 0 && len(includeRegexMatchers) == 0 {
-		return all, []string{}, nil
-	}
+	matchSet := mapset.NewSet[string]()
+	missSet := mapset.NewSet[string]()
 
 	allSet := mapset.NewSet[string]()
 	for _, app := range all {
 		allSet.Add(app)
 	}
 
-	matchSet := mapset.NewSet[string]()
-	missSet := mapset.NewSet[string]()
-
 	// Includes
-	for _, app := range includeExactMatchers {
-		if allSet.Contains(app) {
-			matchSet.Add(app)
-		} else {
-			missSet.Add(app)
-		}
-	}
-
-	for _, expression := range includeRegexMatchers {
-		compiled, err := regexp.Compile(expression)
-		if err != nil {
-			return []string{}, []string{}, err
-		}
-
-		for _, app := range all {
-			if compiled.MatchString(app) {
+	if len(includeExactMatchers) == 0 && len(includeRegexMatchers) == 0 {
+		matchSet = matchSet.Union(allSet)
+	} else {
+		for _, app := range includeExactMatchers {
+			if allSet.Contains(app) {
 				matchSet.Add(app)
+			} else {
+				missSet.Add(app)
+			}
+		}
+
+		for _, expression := range includeRegexMatchers {
+			compiled, err := regexp.Compile(expression)
+			if err != nil {
+				return []string{}, []string{}, err
+			}
+
+			for _, app := range all {
+				if compiled.MatchString(app) {
+					matchSet.Add(app)
+				}
 			}
 		}
 	}
