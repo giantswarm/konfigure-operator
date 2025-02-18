@@ -48,14 +48,28 @@ spec:
                 properties:
                   applications:
                     properties:
-                      exactMatchers:
-                        items:
-                          type: string
-                        type: array
-                      regexMatchers:
-                        items:
-                          type: string
-                        type: array
+                      excludes:
+                        properties:
+                          exactMatchers:
+                            items:
+                              type: string
+                            type: array
+                          regexMatchers:
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                      includes:
+                        properties:
+                          exactMatchers:
+                            items:
+                              type: string
+                            type: array
+                          regexMatchers:
+                            items:
+                              type: string
+                            type: array
+                        type: object
                     type: object
                   cluster:
                     properties:

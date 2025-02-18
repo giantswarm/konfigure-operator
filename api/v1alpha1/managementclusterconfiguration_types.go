@@ -73,8 +73,13 @@ type ClusterConfiguration struct {
 }
 
 type ApplicationsConfiguration struct {
-	RegexMatchers []string `json:"regexMatchers,omitempty"`
+	Includes ApplicationMatchers `json:"includes,omitempty"`
+	Excludes ApplicationMatchers `json:"excludes,omitempty"`
+}
+
+type ApplicationMatchers struct {
 	ExactMatchers []string `json:"exactMatchers,omitempty"`
+	RegexMatchers []string `json:"regexMatchers,omitempty"`
 }
 
 type Reconciliation struct {

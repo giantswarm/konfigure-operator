@@ -21,17 +21,17 @@ func GetAppsToReconcile(dir string, cr *konfigurev1alpha1.Configuration) (match 
 		return []string{}, []string{}, err
 	}
 
-	return filterApps(all, cr.Applications.ExactMatchers, cr.Applications.RegexMatchers)
+	return filterApps(all, cr.Applications.Includes.ExactMatchers, cr.Applications.Includes.RegexMatchers, cr.Applications.Excludes.ExactMatchers, cr.Applications.Excludes.RegexMatchers)
 }
 
 // filterApps Filter apps that match any of the exact or regex matchers and also return
 // a list of exact matcher that was requested but not found a match for them.
-func filterApps(all, exactMatchers, regexMatchers []string) (match []string, miss []string, err error) {
+func filterApps(all, includeExactMatchers, includeRegexMatchers, excludeExactMatchers, excludeRegexMatcher []string) (match []string, miss []string, err error) {
 	if all == nil {
 		return []string{}, []string{}, nil
 	}
 
-	if len(exactMatchers) == 0 && len(regexMatchers) == 0 {
+	if len(includeExactMatchers) == 0 && len(includeRegexMatchers) == 0 {
 		return all, []string{}, nil
 	}
 
@@ -43,7 +43,8 @@ func filterApps(all, exactMatchers, regexMatchers []string) (match []string, mis
 	matchSet := mapset.NewSet[string]()
 	missSet := mapset.NewSet[string]()
 
-	for _, app := range exactMatchers {
+	// Includes
+	for _, app := range includeExactMatchers {
 		if allSet.Contains(app) {
 			matchSet.Add(app)
 		} else {
@@ -51,7 +52,7 @@ func filterApps(all, exactMatchers, regexMatchers []string) (match []string, mis
 		}
 	}
 
-	for _, expression := range regexMatchers {
+	for _, expression := range includeRegexMatchers {
 		compiled, err := regexp.Compile(expression)
 		if err != nil {
 			return []string{}, []string{}, err
@@ -60,6 +61,36 @@ func filterApps(all, exactMatchers, regexMatchers []string) (match []string, mis
 		for _, app := range all {
 			if compiled.MatchString(app) {
 				matchSet.Add(app)
+			}
+		}
+	}
+
+	// Excludes
+	for _, app := range excludeExactMatchers {
+		if matchSet.Contains(app) {
+			matchSet.Remove(app)
+		}
+
+		if missSet.Contains(app) {
+			missSet.Remove(app)
+		}
+	}
+
+	for _, expression := range excludeRegexMatcher {
+		compiled, err := regexp.Compile(expression)
+		if err != nil {
+			return []string{}, []string{}, err
+		}
+
+		for _, app := range matchSet.ToSlice() {
+			if compiled.MatchString(app) {
+				matchSet.Remove(app)
+			}
+		}
+
+		for _, app := range missSet.ToSlice() {
+			if compiled.MatchString(app) {
+				missSet.Remove(app)
 			}
 		}
 	}

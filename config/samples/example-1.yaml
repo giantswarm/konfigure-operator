@@ -6,17 +6,16 @@ metadata:
 spec:
   configuration:
     applications:
-        exactMatchers:
-          - app-operator
-          - chart-operator
+      includes:
+        exactMatchers: []
+        regexMatchers: []
+      excludes:
+        exactMatchers: []
         regexMatchers: []
     cluster:
       name: golem
   destination:
     namespace: default
-  encryption:
-    sops:
-      keysDirectory: "/sopsenv"
   reconciliation:
     interval: 1m
   sources:
