@@ -32,7 +32,8 @@ type ManagementClusterConfigurationSpec struct {
 	Sources Sources `json:"sources"`
 
 	// Destination
-	Destination Destination `json:"destination,omitempty"`
+	// +required
+	Destination Destination `json:"destination,required"`
 
 	// Configuration
 	Configuration Configuration `json:"configuration,omitempty"`
@@ -46,29 +47,35 @@ type Sources struct {
 }
 
 type FluxSource struct {
-	Service       FluxSourceService       `json:"service"`
+	Service FluxSourceService `json:"service,omitempty"`
+	// +required
 	GitRepository FluxSourceGitRepository `json:"gitRepository"`
 }
 
 type FluxSourceService struct {
-	Url string `json:"url"`
+	Url string `json:"url,omitempty"`
 }
 
 type FluxSourceGitRepository struct {
-	Name      string `json:"name"`
+	// +required
+	Name string `json:"name"`
+	// +required
 	Namespace string `json:"namespace"`
 }
 
 type Destination struct {
+	// +required
 	Namespace string `json:"namespace"`
 }
 
 type Configuration struct {
-	Cluster      ClusterConfiguration      `json:"cluster,omitempty"`
+	// +required
+	Cluster      ClusterConfiguration      `json:"cluster"`
 	Applications ApplicationsConfiguration `json:"applications,omitempty"`
 }
 
 type ClusterConfiguration struct {
+	// +required
 	Name string `json:"name"`
 }
 
@@ -83,6 +90,8 @@ type ApplicationMatchers struct {
 }
 
 type Reconciliation struct {
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
 	Interval metav1.Duration `json:"interval"`
 }
 
@@ -92,9 +101,13 @@ type ManagementClusterConfigurationStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// The last successfully applied revision.
+	// Equals the Revision of the applied artifact from the referenced source.
 	// +optional
 	LastAppliedRevision string `json:"lastAppliedRevision,omitempty"`
 
+	// The last revision that was attempted for reconciliation.
+	// Equals the Revision of the last attempted artifact from the referenced source.
 	// +optional
 	LastAttemptedRevision string `json:"lastAttemptedRevision,omitempty"`
 
@@ -109,8 +122,13 @@ type ManagementClusterConfigurationStatus struct {
 }
 
 type FailureStatus struct {
-	AppName string `json:"appName,omitempty"`
-	Message string `json:"message,omitempty"`
+	// +kubebuilder:validation:Type=string
+	// +required
+	AppName string `json:"appName,required"`
+
+	// +kubebuilder:validation:Type=string
+	// +required
+	Message string `json:"message,required"`
 }
 
 // +kubebuilder:object:root=true

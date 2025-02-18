@@ -78,6 +78,8 @@ spec:
                     required:
                     - name
                     type: object
+                required:
+                - cluster
                 type: object
               destination:
                 description: Destination
@@ -91,6 +93,7 @@ spec:
                 description: Reconciliation
                 properties:
                   interval:
+                    pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
                     type: string
                 required:
                 - interval
@@ -114,15 +117,13 @@ spec:
                         properties:
                           url:
                             type: string
-                        required:
-                        - url
                         type: object
                     required:
                     - gitRepository
-                    - service
                     type: object
                 type: object
             required:
+            - destination
             - sources
             type: object
           status:
@@ -192,11 +193,20 @@ spec:
                       type: string
                     message:
                       type: string
+                  required:
+                  - appName
+                  - message
                   type: object
                 type: array
               lastAppliedRevision:
+                description: |-
+                  The last successfully applied revision.
+                  Equals the Revision of the applied artifact from the referenced source.
                 type: string
               lastAttemptedRevision:
+                description: |-
+                  The last revision that was attempted for reconciliation.
+                  Equals the Revision of the last attempted artifact from the referenced source.
                 type: string
               lastReconciledAt:
                 type: string
