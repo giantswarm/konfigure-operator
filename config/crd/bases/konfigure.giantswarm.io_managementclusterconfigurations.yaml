@@ -73,15 +73,6 @@ spec:
                 required:
                 - namespace
                 type: object
-              encryption:
-                description: Encryption
-                properties:
-                  sops:
-                    properties:
-                      keysDirectory:
-                        type: string
-                    type: object
-                type: object
               reconciliation:
                 description: Reconciliation
                 properties:

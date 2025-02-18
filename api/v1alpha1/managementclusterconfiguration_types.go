@@ -31,9 +31,6 @@ type ManagementClusterConfigurationSpec struct {
 	// Sources
 	Sources Sources `json:"sources"`
 
-	// Encryption
-	Encryption Encryption `json:"encryption,omitempty"`
-
 	// Destination
 	Destination Destination `json:"destination,omitempty"`
 
@@ -60,14 +57,6 @@ type FluxSourceService struct {
 type FluxSourceGitRepository struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
-}
-
-type Encryption struct {
-	Sops SopsEncryption `json:"sops,omitempty"`
-}
-
-type SopsEncryption struct {
-	KeysDirectory string `json:"keysDirectory,omitempty"`
 }
 
 type Destination struct {
