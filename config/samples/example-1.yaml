@@ -7,7 +7,9 @@ spec:
   configuration:
     applications:
       includes:
-        exactMatchers: []
+        exactMatchers:
+          - app-operator
+          - chart-operator
         regexMatchers: []
       excludes:
         exactMatchers: []

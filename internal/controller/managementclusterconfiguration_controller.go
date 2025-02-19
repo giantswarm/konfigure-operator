@@ -104,9 +104,17 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 	// TODO Handles misses for status updates
 
+	revision, err := konfigure.GetLastArchiveSHA(fluxUpdater.CacheDir)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to get last archive SHA from: %s", service.GetDir()))
+		revision = "unknown"
+	}
+
+	ownershipLabels := logic.GenerateOwnershipLabels(cr, revision)
+
 	failures := make(map[string]string)
 	for _, appToRender := range appsToRender {
-		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, cr.Spec.Destination.Namespace)
+		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, cr.Spec.Destination.Namespace, ownershipLabels)
 
 		if err != nil {
 			// TODO Collect for status updates
@@ -153,12 +161,6 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 	cr.Status.ObservedGeneration = cr.ObjectMeta.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
-
-	revision, err := konfigure.GetLastArchiveSHA(fluxUpdater.CacheDir)
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to get last archive SHA from: %s", service.GetDir()))
-		revision = "unknown"
-	}
 
 	cr.Status.LastAttemptedRevision = revision
 
@@ -253,12 +255,13 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 	return service, err
 }
 
-func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, targetNamespace string) (*v1.ConfigMap, *v1.Secret, error) {
+func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, targetNamespace string, ownershipLabels map[string]string) (*v1.ConfigMap, *v1.Secret, error) {
 	return service.Generate(ctx, konfigureService.GenerateInput{
 		App: app,
 		// TODO Generate unique name
-		Name:      fmt.Sprintf("%s-%s", app, "laszlo-test"),
-		Namespace: targetNamespace,
+		Name:        fmt.Sprintf("%s-%s", app, "laszlo-test"),
+		Namespace:   targetNamespace,
+		ExtraLabels: ownershipLabels,
 		// Must set, keep it main or maybe fetch from the string in /tmp/konfigure-cache/lastarchive
 		// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
 		// fault anyway cos the pulled source from source-controller does not have the .git metadata.
@@ -273,8 +276,12 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 			Namespace: configmap.Namespace,
 		},
 	}
+
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &desiredCm, func() error {
+		desiredCm.Labels = configmap.Labels
+
 		desiredCm.Data = configmap.Data
+
 		return nil
 	})
 
@@ -290,8 +297,11 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
+		desiredSecret.Labels = secret.Labels
+
 		desiredSecret.Data = secret.Data
 		desiredSecret.StringData = secret.StringData
+
 		return nil
 	})
 
