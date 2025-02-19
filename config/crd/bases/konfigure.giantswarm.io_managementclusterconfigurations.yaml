@@ -86,8 +86,16 @@ spec:
                 properties:
                   namespace:
                     type: string
+                  naming:
+                    properties:
+                      prefix:
+                        type: string
+                      suffix:
+                        type: string
+                    type: object
                 required:
                 - namespace
+                - naming
                 type: object
               reconciliation:
                 description: Reconciliation

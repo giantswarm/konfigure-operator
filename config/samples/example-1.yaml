@@ -18,6 +18,8 @@ spec:
       name: golem
   destination:
     namespace: default
+    naming:
+      suffix: laszlo-test
   reconciliation:
     interval: 1m
   sources:

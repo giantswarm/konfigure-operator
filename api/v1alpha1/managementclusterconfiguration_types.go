@@ -66,6 +66,13 @@ type FluxSourceGitRepository struct {
 type Destination struct {
 	// +required
 	Namespace string `json:"namespace"`
+	// +required
+	Naming NamingOptions `json:"naming"`
+}
+
+type NamingOptions struct {
+	Prefix string `json:"prefix,omitempty"`
+	Suffix string `json:"suffix,omitempty"`
 }
 
 type Configuration struct {
