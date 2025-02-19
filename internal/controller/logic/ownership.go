@@ -1,7 +1,9 @@
 package logic
 
 import (
+	"fmt"
 	"github.com/giantswarm/konfigure-operator/api/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 )
 
@@ -45,4 +47,35 @@ func GenerateOwnershipLabels(cr *v1alpha1.ManagementClusterConfiguration, revisi
 	labels[RevisionLabel] = revision
 
 	return labels
+}
+
+// MatchOwnership Check all ownership labels except: api version (in case of CRD version bump)
+// and revision of course.
+func MatchOwnership(existing, desired v1.ObjectMeta) error {
+	var labelMatchErrors []error
+
+	for _, label := range []string{GeneratedByLabel, OwnerApiGroupLabel, OwnerKindLabel, OwnerNameLabel, OwnerNamespaceLabel} {
+		if err := matchSingleLabel(label, existing, desired); err != nil {
+			labelMatchErrors = append(labelMatchErrors, err)
+		}
+	}
+
+	var errorMessages []string
+	for _, err := range labelMatchErrors {
+		errorMessages = append(errorMessages, err.Error())
+	}
+
+	if len(errorMessages) > 0 {
+		return fmt.Errorf(strings.Join(errorMessages, "\n"))
+	}
+
+	return nil
+}
+
+func matchSingleLabel(key string, existing, desired v1.ObjectMeta) error {
+	if existing.Labels[key] != desired.Labels[key] {
+		return fmt.Errorf("label \"%s\" is set to \"%s\", expected to be: \"%s\"", key, existing.Labels[key], desired.Labels[key])
+	}
+
+	return nil
 }

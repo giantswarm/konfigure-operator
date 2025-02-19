@@ -22,6 +22,7 @@ import (
 	"github.com/giantswarm/konfigure/pkg/fluxupdater"
 	"github.com/giantswarm/konfigure/pkg/sopsenv"
 	"k8s.io/api/core/v1"
+	apiMachineryErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -117,7 +118,6 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, cr.Spec.Destination.Namespace, ownershipLabels)
 
 		if err != nil {
-			// TODO Collect for status updates
 			logger.Error(err, fmt.Sprintf("Failed to render app configuration for: %s", appToRender))
 
 			failures[appToRender] = err.Error()
@@ -126,8 +126,23 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 		logger.Info(fmt.Sprintf("Succesfully rendered app configuration for: %s", appToRender))
 
-		//logger.Info(fmt.Sprintf("ConfigMap for %s: %s", appToRender, configmap))
-		//logger.Info(fmt.Sprintf("Secret for %s: %s", appToRender, secret))
+		// Pre-flight check config map apply
+		if err = r.canApplyConfigMap(ctx, configmap); err != nil {
+			failures[appToRender] = err.Error()
+		}
+
+		// Pre-flight check secret apply. Present both errors to avoid the need to fix in multiple turns.
+		if err = r.canApplySecret(ctx, secret); err != nil {
+			if failures[appToRender] != "" {
+				failures[appToRender] = failures[appToRender] + " " + err.Error()
+			} else {
+				failures[appToRender] = err.Error()
+			}
+		}
+
+		if failures[appToRender] != "" {
+			continue
+		}
 
 		err = r.applyConfigMap(ctx, configmap)
 		if err != nil {
@@ -269,6 +284,25 @@ func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx co
 	})
 }
 
+func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
+	existingObject := &v1.ConfigMap{}
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(configmap), existingObject)
+
+	if err != nil {
+		if apiMachineryErrors.IsNotFound(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	if err = logic.MatchOwnership(existingObject.ObjectMeta, configmap.ObjectMeta); err != nil {
+		return fmt.Errorf("desired configmap exists already and is owned by another object: %s", err.Error())
+	}
+
+	return nil
+}
+
 func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
 	desiredCm := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -288,6 +322,25 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 	return err
 }
 
+func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Context, secret *v1.Secret) error {
+	existingObject := &v1.Secret{}
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), existingObject)
+
+	if err != nil {
+		if apiMachineryErrors.IsNotFound(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	if err = logic.MatchOwnership(existingObject.ObjectMeta, secret.ObjectMeta); err != nil {
+		return fmt.Errorf("desired secret exists already and is owned by another object: %s", err.Error())
+	}
+
+	return nil
+}
+
 func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, secret *v1.Secret) error {
 	desiredSecret := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -295,7 +348,6 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 			Namespace: secret.Namespace,
 		},
 	}
-
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
 		desiredSecret.Labels = secret.Labels
 
