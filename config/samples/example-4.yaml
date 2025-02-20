@@ -1,7 +1,7 @@
 apiVersion: konfigure.giantswarm.io/v1alpha1
 kind: ManagementClusterConfiguration
 metadata:
-  name: example-1
+  name: example-4
   namespace: konfigure-operator-system
 spec:
   configuration:
@@ -19,7 +19,9 @@ spec:
   destination:
     namespace: default
     naming:
-      suffix: laszlo
+      prefix: pre
+      suffix: post
+      useSeparator: false
   reconciliation:
     interval: 1m
   sources:

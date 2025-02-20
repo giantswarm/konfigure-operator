@@ -71,8 +71,15 @@ type Destination struct {
 }
 
 type NamingOptions struct {
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]{0,4}[a-z0-9])?$"
 	Prefix string `json:"prefix,omitempty"`
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]{0,4}[a-z0-9])?$"
 	Suffix string `json:"suffix,omitempty"`
+	// +kubebuilder:default:=true
+	// +optional
+	UseSeparator bool `json:"useSeparator,omitempty"`
 }
 
 type Configuration struct {

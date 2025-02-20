@@ -2,4 +2,6 @@
 resources:
 - example-1.yaml
 - example-2.yaml
+- example-3.yaml
+- example-4.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

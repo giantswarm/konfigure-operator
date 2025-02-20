@@ -89,9 +89,14 @@ spec:
                   naming:
                     properties:
                       prefix:
+                        pattern: ^[a-z0-9]([-a-z0-9]{0,4}[a-z0-9])?$
                         type: string
                       suffix:
+                        pattern: ^[a-z0-9]([-a-z0-9]{0,4}[a-z0-9])?$
                         type: string
+                      useSeparator:
+                        default: true
+                        type: boolean
                     type: object
                 required:
                 - namespace

@@ -19,7 +19,7 @@ spec:
   destination:
     namespace: default
     naming:
-      suffix: laszlo-test
+      suffix: laszlo
   reconciliation:
     interval: 1m
   sources:

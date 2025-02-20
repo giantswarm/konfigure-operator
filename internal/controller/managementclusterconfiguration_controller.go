@@ -115,7 +115,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 	failures := make(map[string]string)
 	for _, appToRender := range appsToRender {
-		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, cr.Spec.Destination.Namespace, ownershipLabels)
+		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, revision, cr.Spec.Destination, ownershipLabels)
 
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to render app configuration for: %s", appToRender))
@@ -270,17 +270,30 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 	return service, err
 }
 
-func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, targetNamespace string, ownershipLabels map[string]string) (*v1.ConfigMap, *v1.Secret, error) {
+func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, revision string, destination konfigurev1alpha1.Destination, ownershipLabels map[string]string) (*v1.ConfigMap, *v1.Secret, error) {
+	name := app
+
+	separator := ""
+	if destination.Naming.UseSeparator {
+		separator = "-"
+	}
+
+	if destination.Naming.Prefix != "" {
+		name = destination.Naming.Prefix + separator + name
+	}
+
+	if destination.Naming.Suffix != "" {
+		name = name + separator + destination.Naming.Suffix
+	}
+
 	return service.Generate(ctx, konfigureService.GenerateInput{
-		App: app,
-		// TODO Generate unique name
-		Name:        fmt.Sprintf("%s-%s", app, "laszlo-test"),
-		Namespace:   targetNamespace,
+		App:         app,
+		Name:        name,
+		Namespace:   destination.Namespace,
 		ExtraLabels: ownershipLabels,
-		// Must set, keep it main or maybe fetch from the string in /tmp/konfigure-cache/lastarchive
 		// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
-		// fault anyway cos the pulled source from source-controller does not have the .git metadata.
-		VersionOverride: "main",
+		// fail anyway cos the pulled source from source-controller does not have the .git metadata.
+		VersionOverride: revision,
 	})
 }
 
