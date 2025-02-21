@@ -79,11 +79,13 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
-		if !controllerutil.ContainsFinalizer(cr, "") {
+		if !controllerutil.ContainsFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer) {
 			controllerutil.AddFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer)
 			if err := r.Update(ctx, cr); err != nil {
 				return ctrl.Result{}, err
 			}
+
+			return ctrl.Result{Requeue: true}, nil
 		}
 	} else {
 		// The object is being deleted
@@ -106,7 +108,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
 		}
 
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
 	}
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
 
@@ -116,7 +118,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
 		}
 
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
 	}
 	logger.Info("Konfigure cache successfully updated!")
 
@@ -126,7 +128,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
 		}
 
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
 	}
 
 	appsToRender, missedExactMatchers, err := logic.GetAppsToReconcile(service.GetDir(), &cr.Spec.Configuration)
@@ -239,7 +241,12 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		return ctrl.Result{}, err
 	}
 
-	// TODO Handle reschedule in case if failures.
+	if len(failures) > 0 {
+		logger.Info(fmt.Sprintf("Reconciliation finished in %s with %d failures, next run in %s", time.Since(reconcileStart).String(), len(failures), cr.Spec.Reconciliation.RetryInterval.Duration.String()))
+
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, nil
+	}
+
 	logger.Info(fmt.Sprintf("Reconciliation finished in %s, next run in %s", time.Since(reconcileStart).String(), cr.Spec.Reconciliation.Interval.Duration.String()))
 
 	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil

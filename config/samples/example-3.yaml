@@ -23,6 +23,7 @@ spec:
       suffix: x-y-z
   reconciliation:
     interval: 1m
+    retryInterval: 30s
   sources:
     flux:
       gitRepository:

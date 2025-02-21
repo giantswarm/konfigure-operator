@@ -1,7 +1,7 @@
 apiVersion: konfigure.giantswarm.io/v1alpha1
 kind: ManagementClusterConfiguration
 metadata:
-  name: example-1
+  name: example-5
   namespace: konfigure-operator-system
 spec:
   configuration:
@@ -19,14 +19,15 @@ spec:
   destination:
     namespace: default
     naming:
-      suffix: laszlo
+      prefix: pre
+      suffix: post
+      useSeparator: false
   reconciliation:
     interval: 1m
-    retryInterval: 10s
   sources:
     flux:
       gitRepository:
         name: "giantswarm-config"
         namespace: "flux-giantswarm"
       service:
-        url: "source-controller.flux-giantswarm.svc"
+        url: "asd.qwe.svc"

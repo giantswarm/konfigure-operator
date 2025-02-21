@@ -24,6 +24,7 @@ spec:
       useSeparator: false
   reconciliation:
     interval: 1m
+    retryInterval: 30s
   sources:
     flux:
       gitRepository:
