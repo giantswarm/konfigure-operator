@@ -102,18 +102,30 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	// Initialize Konfigure
 	sops, err := r.initializeSopsEnv(ctx)
 	if err != nil {
+		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
+			logger.Error(updateStatusErr, "Failed to update status on setup failure")
+		}
+
 		return ctrl.Result{}, err
 	}
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
 
 	fluxUpdater, err := r.initializeFluxUpdater(cr.Spec.Sources.Flux)
 	if err != nil {
+		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
+			logger.Error(updateStatusErr, "Failed to update status on setup failure")
+		}
+
 		return ctrl.Result{}, err
 	}
 	logger.Info("Konfigure cache successfully updated!")
 
 	service, err := r.initializeKonfigure(ctx, sops.GetKeysDir(), fluxUpdater.CacheDir, cr.Spec.Configuration.Cluster.Name)
 	if err != nil {
+		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
+			logger.Error(updateStatusErr, "Failed to update status on setup failure")
+		}
+
 		return ctrl.Result{}, err
 	}
 
@@ -203,20 +215,20 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		cr.Status.LastAppliedRevision = revision
 
 		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               logic.ReadyCondition,
 			Status:             metav1.ConditionTrue,
 			ObservedGeneration: cr.ObjectMeta.Generation,
 			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
-			Reason:             "ReconciliationSucceeded",
+			Reason:             logic.ReconciliationSucceededReason,
 			Message:            fmt.Sprintf("Applied revision: %s", revision),
 		})
 	} else {
 		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               logic.ReadyCondition,
 			Status:             metav1.ConditionFalse,
 			ObservedGeneration: cr.ObjectMeta.Generation,
 			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
-			Reason:             "ReconciliationFailed",
+			Reason:             logic.ReconciliationFailedReason,
 			Message:            fmt.Sprintf("Attempted revision: %s", revision),
 		})
 	}
@@ -287,6 +299,24 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 	logger.Info("Konfigure service successfully initialized!")
 
 	return service, err
+}
+
+func (r *ManagementClusterConfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.ManagementClusterConfiguration, err error) error {
+	cr.Status.ObservedGeneration = cr.ObjectMeta.Generation
+	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
+
+	cr.Status.Conditions = []metav1.Condition{}
+
+	cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
+		Type:               logic.ReadyCondition,
+		Status:             metav1.ConditionFalse,
+		ObservedGeneration: cr.ObjectMeta.Generation,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
+		Reason:             logic.SetupFailedReason,
+		Message:            fmt.Sprintf("Setup failed: %s", err.Error()),
+	})
+
+	return r.Status().Update(ctx, cr)
 }
 
 func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, revision string, destination konfigurev1alpha1.Destination, ownershipLabels map[string]string) (*v1.ConfigMap, *v1.Secret, error) {
