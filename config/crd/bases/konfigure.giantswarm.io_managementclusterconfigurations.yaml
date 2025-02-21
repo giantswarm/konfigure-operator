@@ -226,6 +226,10 @@ spec:
                 type: string
               lastReconciledAt:
                 type: string
+              misses:
+                items:
+                  type: string
+                type: array
               observedGeneration:
                 description: ObservedGeneration is the last observed generation.
                 format: int64

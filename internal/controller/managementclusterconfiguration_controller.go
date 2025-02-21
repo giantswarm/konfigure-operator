@@ -137,8 +137,6 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	logger.Info(fmt.Sprintf("Apps to reconcile: %s", strings.Join(appsToRender, ",")))
 	logger.Info(fmt.Sprintf("Missed exact matchers: %s", strings.Join(missedExactMatchers, ",")))
 
-	// TODO Handles misses for status updates
-
 	revision, err := konfigure.GetLastArchiveSHA(fluxUpdater.CacheDir)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Failed to get last archive SHA from: %s", service.GetDir()))
@@ -207,6 +205,9 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			Message: failureMessage,
 		})
 	}
+
+	// Status update for missed matchers
+	cr.Status.Misses = missedExactMatchers
 
 	cr.Status.ObservedGeneration = cr.ObjectMeta.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)

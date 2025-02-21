@@ -143,6 +143,9 @@ type ManagementClusterConfigurationStatus struct {
 
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// +optional
+	Misses []string `json:"misses,omitempty"`
 }
 
 type FailureStatus struct {
