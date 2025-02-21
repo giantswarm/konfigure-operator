@@ -74,11 +74,30 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
 
-	// TODO This is not that simple ^^
-	//if cr.Generation == cr.Status.ObservedGeneration {
-	//	logger.Info(fmt.Sprintf("Generation matches observed generation, skipping reconciliation for: %s/%s", cr.Namespace, cr.Name))
-	//	return ctrl.Result{}, nil
-	//}
+	// Handle finalizer
+	if cr.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// to registering our finalizer.
+		if !controllerutil.ContainsFinalizer(cr, "") {
+			controllerutil.AddFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer)
+			if err := r.Update(ctx, cr); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		// The object is being deleted
+		if controllerutil.ContainsFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer) {
+			// remove our finalizer from the list and update it.
+			controllerutil.RemoveFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer)
+			if err := r.Update(ctx, cr); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		// Stop reconciliation as the item is being deleted
+		return ctrl.Result{}, nil
+	}
 
 	// Initialize Konfigure
 	sops, err := r.initializeSopsEnv(ctx)
