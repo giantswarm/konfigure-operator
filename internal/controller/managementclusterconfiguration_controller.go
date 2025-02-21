@@ -62,7 +62,7 @@ type ManagementClusterConfigurationReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.1/pkg/reconcile
-func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, returnError error) {
 	logger := log.FromContext(ctx)
 	reconcileStart := time.Now()
 
@@ -74,27 +74,83 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
 
-	// TODO This is not that simple ^^
-	//if cr.Generation == cr.Status.ObservedGeneration {
-	//	logger.Info(fmt.Sprintf("Generation matches observed generation, skipping reconciliation for: %s/%s", cr.Namespace, cr.Name))
-	//	return ctrl.Result{}, nil
-	//}
+	asd := false
+
+	// Add finalizer
+	if !controllerutil.ContainsFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer) {
+		//logger.Info(fmt.Sprintf("Need to add finalizer to the CR: %s", cr))
+		//cr.Finalizers = append(cr.Finalizers, konfigurev1alpha1.KonfigureOperatorFinalizer)
+		//logger.Info(fmt.Sprintf("Added finalizer to the CR: %s", cr))
+
+		if controllerutil.AddFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer) {
+			logger.Info(fmt.Sprintf("Added finalizer to the CR: %s", cr))
+			_ = r.Update(ctx, cr)
+		} else {
+			logger.Info(fmt.Sprintf("No need to add finalizer to the CR: %s", cr))
+		}
+
+		asd = true
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Update status
+	defer func() {
+		if asd {
+			return
+		}
+
+		//base := client.MergeFrom(cr.DeepCopyObject().(client.Object))
+		//err := r.Status().Update(ctx, cr)
+		//if err := r.Patch(ctx, cr, base); err != nil {
+		logger.Info(fmt.Sprintf("Defer, before update for: %s", cr))
+		if err := r.Status().Update(ctx, cr); err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to update status for: %s/%s", cr.GetNamespace(), cr.GetName()))
+			returnError = err
+		}
+
+		logger.Info(fmt.Sprintf("Defer, after update for: %s", cr))
+		logger.Info(fmt.Sprintf("Updated status and finalizers for: %s/%s", cr.GetNamespace(), cr.GetName()))
+
+		// TODO Handle reschedule in case if failures.
+		conditions := cr.Status.Conditions
+		if conditions != nil {
+			for _, condition := range conditions {
+				if condition.Type == logic.ReadyCondition {
+					if condition.Status == metav1.ConditionTrue {
+						logger.Info(fmt.Sprintf("Reconciliation finished in %s, next run in %s", time.Since(reconcileStart).String(), cr.Spec.Reconciliation.Interval.Duration.String()))
+					}
+				}
+			}
+		}
+	}()
+
+	// Run finalizers if the object is being deleted
+	if !cr.ObjectMeta.DeletionTimestamp.IsZero() {
+		asd = true
+		return r.finalize(ctx, cr)
+	}
 
 	// Initialize Konfigure
 	sops, err := r.initializeSopsEnv(ctx)
 	if err != nil {
+		r.updateStatusOnSetupFailure(ctx, cr, err)
+
 		return ctrl.Result{}, err
 	}
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
 
 	fluxUpdater, err := r.initializeFluxUpdater(cr.Spec.Sources.Flux)
 	if err != nil {
+		r.updateStatusOnSetupFailure(ctx, cr, err)
+
 		return ctrl.Result{}, err
 	}
 	logger.Info("Konfigure cache successfully updated!")
 
 	service, err := r.initializeKonfigure(ctx, sops.GetKeysDir(), fluxUpdater.CacheDir, cr.Spec.Configuration.Cluster.Name)
 	if err != nil {
+		r.updateStatusOnSetupFailure(ctx, cr, err)
+
 		return ctrl.Result{}, err
 	}
 
@@ -180,36 +236,29 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	cr.Status.LastAttemptedRevision = revision
 
 	cr.Status.Conditions = []metav1.Condition{}
-	if len(failures) == 0 {
-		cr.Status.LastAppliedRevision = revision
-
+	if len(failures) > 0 {
 		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionTrue,
-			ObservedGeneration: cr.ObjectMeta.Generation,
-			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
-			Reason:             "ReconciliationSucceeded",
-			Message:            fmt.Sprintf("Applied revision: %s", revision),
-		})
-	} else {
-		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
+			Type:               logic.ReadyCondition,
 			Status:             metav1.ConditionFalse,
 			ObservedGeneration: cr.ObjectMeta.Generation,
 			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
-			Reason:             "ReconciliationFailed",
+			Reason:             logic.ReconciliationFailedReason,
 			Message:            fmt.Sprintf("Attempted revision: %s", revision),
 		})
+
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, nil
 	}
 
-	err = r.Status().Update(ctx, cr)
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to update status for: %s/%s", cr.GetNamespace(), cr.GetName()))
-		return ctrl.Result{}, err
-	}
+	cr.Status.LastAppliedRevision = revision
 
-	// TODO Handle reschedule in case if failures.
-	logger.Info(fmt.Sprintf("Reconciliation finished in %s, next run in %s", time.Since(reconcileStart).String(), cr.Spec.Reconciliation.Interval.Duration.String()))
+	cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
+		Type:               logic.ReadyCondition,
+		Status:             metav1.ConditionTrue,
+		ObservedGeneration: cr.ObjectMeta.Generation,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
+		Reason:             logic.ReconciliationSucceededReason,
+		Message:            fmt.Sprintf("Applied revision: %s", revision),
+	})
 
 	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil
 }
@@ -268,6 +317,22 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 	logger.Info("Konfigure service successfully initialized!")
 
 	return service, err
+}
+
+func (r *ManagementClusterConfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.ManagementClusterConfiguration, err error) {
+	cr.Status.ObservedGeneration = cr.ObjectMeta.Generation
+	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
+
+	cr.Status.Conditions = []metav1.Condition{}
+
+	cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
+		Type:               logic.ReadyCondition,
+		Status:             metav1.ConditionFalse,
+		ObservedGeneration: cr.ObjectMeta.Generation,
+		LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
+		Reason:             logic.SetupFailedReason,
+		Message:            fmt.Sprintf("Setup failed: %s", err.Error()),
+	})
 }
 
 func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, revision string, destination konfigurev1alpha1.Destination, ownershipLabels map[string]string) (*v1.ConfigMap, *v1.Secret, error) {
@@ -371,6 +436,18 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 	})
 
 	return err
+}
+
+func (r *ManagementClusterConfigurationReconciler) finalize(ctx context.Context, cr *konfigurev1alpha1.ManagementClusterConfiguration) (ctrl.Result, error) {
+	controllerutil.RemoveFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer)
+
+	err := r.Update(ctx, cr)
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
