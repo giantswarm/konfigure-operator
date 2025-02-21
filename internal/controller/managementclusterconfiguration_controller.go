@@ -85,7 +85,8 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{Requeue: true}, nil
+			// The update will trigger a requeue, if we set `Requeue: true`, it will trigger an additional time.
+			return ctrl.Result{}, nil
 		}
 	} else {
 		// The object is being deleted
