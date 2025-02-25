@@ -63,6 +63,7 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
+          - --metrics-secure=false
         image: gsoci.azurecr.io/giantswarm/konfigure-operator:latest
         imagePullPolicy: IfNotPresent
         name: manager

@@ -74,6 +74,16 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
 
+	defer func() {
+		RecordReconcileDuration(cr, reconcileStart)
+
+		for _, condition := range cr.Status.Conditions {
+			logger.Info(fmt.Sprintf("Finished Reconciling ManagementClusterConfiguration: %s/%s with status: %s/%s :: %s", cr.GetNamespace(), cr.GetName(), condition.Type, condition.Status, condition.Reason))
+		}
+
+		RecordConditions(cr)
+	}()
+
 	// Handle finalizer
 	if cr.ObjectMeta.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,
@@ -153,7 +163,11 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			logger.Error(err, fmt.Sprintf("Failed to render app configuration for: %s", appToRender))
 
 			failures[appToRender] = err.Error()
+
+			RecordGeneration(cr, appToRender, false)
 			continue
+		} else {
+			RecordGeneration(cr, appToRender, true)
 		}
 
 		logger.Info(fmt.Sprintf("Succesfully rendered app configuration for: %s", appToRender))
