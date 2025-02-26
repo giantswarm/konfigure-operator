@@ -1,0 +1,43 @@
+version: 2.1
+orbs:
+  architect: giantswarm/architect@5.11.5
+
+workflows:
+  build:
+    jobs:
+    - architect/go-build:
+        context: architect
+        name: go-build
+        binary: konfigure-operator
+        filters:
+          tags:
+            only: /^v.*/
+
+    - architect/push-to-registries:
+        context: architect
+        name: push-to-registries
+        requires:
+        - go-build
+        filters:
+          tags:
+            only: /^v.*/
+
+          branches:
+            ignore:
+            - main
+
+    - architect/push-to-app-catalog:
+        context: architect
+        executor: app-build-suite
+        name: push-to-default-app-catalog
+        app_catalog: giantswarm-catalog
+        app_catalog_test: giantswarm-test-catalog
+        chart: chart-operator
+        requires:
+        - push-to-registries
+        filters:
+          tags:
+            only: /^v.*/
+          branches:
+            ignore:
+            - main
