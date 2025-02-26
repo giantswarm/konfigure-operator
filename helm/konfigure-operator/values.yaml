@@ -1,0 +1,24 @@
+image:
+  registry: gsoci.azurecr.io
+  name: "giantswarm/konfigure-operator"
+  tag: ""
+
+# Pod securityContext
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container securityContext
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  privileged: false
+  # Should only be enabled when /tmp has a mounted volume in place,
+  # otherwise artifact pulls will fail to be written to the file system.
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
