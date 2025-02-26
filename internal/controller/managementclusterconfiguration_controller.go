@@ -144,6 +144,13 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	}
 
 	appsToRender, missedExactMatchers, err := logic.GetAppsToReconcile(service.GetDir(), &cr.Spec.Configuration)
+	if err != nil {
+		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
+			logger.Error(updateStatusErr, "Failed to update status on setup failure")
+		}
+
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
+	}
 
 	logger.Info(fmt.Sprintf("Apps to reconcile: %s", strings.Join(appsToRender, ",")))
 	logger.Info(fmt.Sprintf("Missed exact matchers: %s", strings.Join(missedExactMatchers, ",")))
@@ -171,7 +178,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			RecordGeneration(cr, appToRender, true)
 		}
 
-		logger.Info(fmt.Sprintf("Succesfully rendered app configuration for: %s", appToRender))
+		logger.Info(fmt.Sprintf("Successfully rendered app configuration for: %s", appToRender))
 
 		// Pre-flight check config map apply
 		if err = r.canApplyConfigMap(ctx, configmap); err != nil {
@@ -207,7 +214,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Succesfully applied rendered configmap and secret for: %s", appToRender))
+		logger.Info(fmt.Sprintf("Successfully applied rendered configmap and secret for: %s", appToRender))
 	}
 
 	// Status update for failures

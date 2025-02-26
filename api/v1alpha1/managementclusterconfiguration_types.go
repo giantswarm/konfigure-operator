@@ -37,7 +37,7 @@ type ManagementClusterConfigurationSpec struct {
 
 	// Destination
 	// +required
-	Destination Destination `json:"destination,required"`
+	Destination Destination `json:"destination"`
 
 	// Configuration
 	Configuration Configuration `json:"configuration,omitempty"`
@@ -151,11 +151,11 @@ type ManagementClusterConfigurationStatus struct {
 type FailureStatus struct {
 	// +kubebuilder:validation:Type=string
 	// +required
-	AppName string `json:"appName,required"`
+	AppName string `json:"appName"`
 
 	// +kubebuilder:validation:Type=string
 	// +required
-	Message string `json:"message,required"`
+	Message string `json:"message"`
 }
 
 // +kubebuilder:object:root=true

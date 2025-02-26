@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -62,13 +63,13 @@ func MatchOwnership(existing, desired v1.ObjectMeta) error {
 		}
 	}
 
-	var errorMessages []string
+	errorMessages := make([]string, len(labelMatchErrors))
 	for _, err := range labelMatchErrors {
 		errorMessages = append(errorMessages, err.Error())
 	}
 
 	if len(errorMessages) > 0 {
-		return fmt.Errorf(strings.Join(errorMessages, "\n"))
+		return errors.New(strings.Join(errorMessages, "\n"))
 	}
 
 	return nil
