@@ -38,6 +38,9 @@ spec:
           {{- with .Values.securityContext }}
             {{- . | toYaml | nindent 10 }}
           {{- end }}
+        ports:
+          - name: http
+            containerPort: 8081
         livenessProbe:
           httpGet:
             path: /healthz
