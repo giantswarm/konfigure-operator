@@ -1,11 +1,13 @@
 package controller
 
 import (
-	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"time"
+
+	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
 var (

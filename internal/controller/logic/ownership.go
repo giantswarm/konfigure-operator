@@ -2,9 +2,11 @@ package logic
 
 import (
 	"fmt"
-	"github.com/giantswarm/konfigure-operator/api/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
 const (
