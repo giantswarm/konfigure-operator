@@ -32,7 +32,7 @@ workflows:
         name: push-to-default-app-catalog
         app_catalog: giantswarm-catalog
         app_catalog_test: giantswarm-test-catalog
-        chart: chart-operator
+        chart: konfigure-operator
         requires:
         - push-to-registries
         filters:
