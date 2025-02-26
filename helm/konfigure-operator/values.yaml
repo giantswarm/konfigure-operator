@@ -3,6 +3,18 @@ image:
   name: "giantswarm/konfigure-operator"
   tag: ""
 
+resources:
+  limits:
+    cpu: 100m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Vertical pod autoscaler
+verticalPodAutoscaler:
+  enabled: false
+
 # Pod securityContext
 podSecurityContext:
   runAsNonRoot: true
@@ -16,8 +28,6 @@ securityContext:
     drop:
       - ALL
   privileged: false
-  # Should only be enabled when /tmp has a mounted volume in place,
-  # otherwise artifact pulls will fail to be written to the file system.
   readOnlyRootFilesystem: true
   runAsNonRoot: true
   seccompProfile:

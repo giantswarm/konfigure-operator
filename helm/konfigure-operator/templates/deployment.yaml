@@ -1,0 +1,71 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "labels.selector" . | nindent 6 }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        {{- include "labels.selector" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        {{- with .Values.podSecurityContext }}
+          {{- . | toYaml | nindent 8 }}
+        {{- end }}
+      containers:
+      - command:
+        - /manager
+        args:
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        - --metrics-secure=false
+        image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ include "image.tag" . }}"
+        imagePullPolicy: IfNotPresent
+        name: manager
+        securityContext:
+          runAsUser: 65532
+          runAsGroup: 65532
+          {{- with .Values.securityContext }}
+            {{- . | toYaml | nindent 10 }}
+          {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          {{- include "resources.konfigure-operator" . | nindent 10 }}
+        volumeMounts:
+        - mountPath: /tmp/konfigure-cache
+          name: cache
+        - mountPath: /sopsenv
+          name: sopsenv
+        - mountPath: /tmp
+          name: temp
+      volumes:
+      - emptyDir: {}
+        name: cache
+      - emptyDir:
+          medium: Memory
+        name: sopsenv
+      - emptyDir: {}
+        name: temp
+      serviceAccountName: {{ .Release.Name }}
+      terminationGracePeriodSeconds: 10
