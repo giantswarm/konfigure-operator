@@ -1,3 +1,4 @@
+# Deployment
 image:
   registry: gsoci.azurecr.io
   name: "giantswarm/konfigure-operator"
@@ -6,10 +7,18 @@ image:
 resources:
   limits:
     cpu: 100m
-    memory: 256Mi
+    memory: 512Mi
   requests:
     cpu: 50m
-    memory: 64Mi
+    memory: 128Mi
+
+volumes:
+  cache:
+    sizeLimit: 64Mi
+  sopsenv:
+    sizeLimit: 4Mi
+  temp:
+    sizeLimit: 8Mi
 
 # Vertical pod autoscaler
 verticalPodAutoscaler:

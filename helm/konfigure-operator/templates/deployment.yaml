@@ -68,12 +68,17 @@ spec:
         - mountPath: /tmp
           name: temp
       volumes:
-      - emptyDir: {}
+      - emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.volumes.cache.sizeLimit }}
         name: cache
       - emptyDir:
           medium: Memory
+          sizeLimit: {{ .Values.volumes.sopsenv.sizeLimit }}
         name: sopsenv
-      - emptyDir: {}
+      - emptyDir:
+          medium: Memory
+          sizeLimit: {{ .Values.volumes.temp.sizeLimit }}
         name: temp
       serviceAccountName: {{ .Release.Name }}
       terminationGracePeriodSeconds: 10
