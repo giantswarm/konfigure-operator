@@ -32,3 +32,10 @@ securityContext:
   runAsNonRoot: true
   seccompProfile:
     type: RuntimeDefault
+
+# Prometheus
+metrics:
+  podMonitor:
+    enabled: true
+    interval: "60s"
+    scrapeTimeout: "45s"

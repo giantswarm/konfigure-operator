@@ -28,6 +28,7 @@ spec:
         args:
         - --leader-elect
         - --health-probe-bind-address=:8081
+        - --metrics-bind-address=:8080
         - --metrics-secure=false
         image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ include "image.tag" . }}"
         imagePullPolicy: IfNotPresent
@@ -39,8 +40,12 @@ spec:
             {{- . | toYaml | nindent 10 }}
           {{- end }}
         ports:
-          - name: http
-            containerPort: 8081
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+          - containerPort: 8081
+            name: health
+            protocol: TCP
         livenessProbe:
           httpGet:
             path: /healthz
