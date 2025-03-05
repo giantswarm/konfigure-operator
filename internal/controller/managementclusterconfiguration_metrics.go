@@ -16,7 +16,7 @@ var (
 			Name: "konfigure_operator_reconcile_condition",
 			Help: "The current condition status of a Konfigure Operator resource reconciliation.",
 		},
-		[]string{"config_kind", "config_name", "config_namespace", "condition_type", "condition_status"},
+		[]string{"resource_kind", "resource_name", "resource_namespace", "condition_type", "condition_status"},
 	)
 
 	generationGauge = prometheus.NewGaugeVec(
@@ -34,7 +34,7 @@ var (
 			// Use a histogram with 10 count buckets between 1ms - 1hour
 			Buckets: prometheus.ExponentialBucketsRange(10e-3, 1800, 10),
 		},
-		[]string{"config_kind", "config_name", "config_namespace"},
+		[]string{"resource_kind", "resource_name", "resource_namespace"},
 	)
 )
 
