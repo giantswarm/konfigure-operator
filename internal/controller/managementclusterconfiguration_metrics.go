@@ -24,7 +24,7 @@ var (
 			Name: "konfigure_operator_generation",
 			Help: "Configuration generation status of a given app",
 		},
-		[]string{"config_kind", "config_name", "config_namespace", "app_name", "config_destination"},
+		[]string{"resource_kind", "resource_name", "resource_namespace", "app_name", "config_cluster_name", "destination_namespace"},
 	)
 
 	reconcileDurationHistogram = prometheus.NewHistogramVec(
@@ -61,7 +61,7 @@ func RecordGeneration(obj *konfigurev1alpha1.ManagementClusterConfiguration, app
 		value = 1
 	}
 
-	generationGauge.WithLabelValues(obj.Kind, obj.Name, obj.Namespace, app, obj.Spec.Destination.Namespace).Set(value)
+	generationGauge.WithLabelValues(obj.Kind, obj.Name, obj.Namespace, app, obj.Spec.Configuration.Cluster.Name, obj.Spec.Destination.Namespace).Set(value)
 }
 
 func RecordReconcileDuration(obj *konfigurev1alpha1.ManagementClusterConfiguration, start time.Time) {
