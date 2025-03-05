@@ -1,0 +1,50 @@
+# Deployment
+image:
+  registry: gsoci.azurecr.io
+  name: "giantswarm/konfigure-operator"
+  tag: ""
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 512Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+
+volumes:
+  cache:
+    sizeLimit: 64Mi
+  sopsenv:
+    sizeLimit: 4Mi
+  temp:
+    sizeLimit: 8Mi
+
+# Vertical pod autoscaler
+verticalPodAutoscaler:
+  enabled: false
+
+# Pod securityContext
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container securityContext
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Prometheus
+metrics:
+  podMonitor:
+    enabled: true
+    interval: "60s"
+    scrapeTimeout: "45s"

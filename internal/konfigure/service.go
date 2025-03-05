@@ -2,9 +2,10 @@ package konfigure
 
 import (
 	"context"
+	"path"
+
 	konfigureService "github.com/giantswarm/konfigure/pkg/service"
 	konfigureVaultClient "github.com/giantswarm/konfigure/pkg/vaultclient"
-	"path"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 

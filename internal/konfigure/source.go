@@ -11,7 +11,7 @@ import (
 func InitializeFluxUpdater(cacheDir, sourceControllerService, gitRepositoryNamespace, gitRepositoryName string) (*fluxupdater.FluxUpdater, error) {
 	gitRepositoryAwareCacheDir := path.Join(cacheDir, gitRepositoryNamespace, gitRepositoryName)
 
-	err := os.MkdirAll(gitRepositoryAwareCacheDir, 0755)
+	err := os.MkdirAll(gitRepositoryAwareCacheDir, 0750)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func InitializeFluxUpdater(cacheDir, sourceControllerService, gitRepositoryNames
 }
 
 func GetLastArchiveSHA(cacheDir string) (string, error) {
-	bytes, err := os.ReadFile(path.Join(cacheDir, "lastarchive"))
+	bytes, err := os.ReadFile(path.Join(path.Clean(cacheDir), "lastarchive"))
 	if err != nil {
 		return "", err
 	}

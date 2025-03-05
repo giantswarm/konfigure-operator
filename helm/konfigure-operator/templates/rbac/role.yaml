@@ -1,0 +1,34 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: {{ .Release.Name }}-manager-role
+rules:
+- apiGroups:
+  - konfigure.giantswarm.io
+  resources:
+  - managementclusterconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - konfigure.giantswarm.io
+  resources:
+  - managementclusterconfigurations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - konfigure.giantswarm.io
+  resources:
+  - managementclusterconfigurations/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -1,10 +1,13 @@
 package logic
 
 import (
+	"errors"
 	"fmt"
-	"github.com/giantswarm/konfigure-operator/api/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
 const (
@@ -60,13 +63,13 @@ func MatchOwnership(existing, desired v1.ObjectMeta) error {
 		}
 	}
 
-	var errorMessages []string
+	errorMessages := make([]string, len(labelMatchErrors))
 	for _, err := range labelMatchErrors {
 		errorMessages = append(errorMessages, err.Error())
 	}
 
 	if len(errorMessages) > 0 {
-		return fmt.Errorf(strings.Join(errorMessages, "\n"))
+		return errors.New(strings.Join(errorMessages, "\n"))
 	}
 
 	return nil
