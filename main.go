@@ -19,9 +19,11 @@ package main
 import (
 	"crypto/tls"
 	"flag"
-	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
-	"github.com/giantswarm/konfigure/pkg/sopsenv"
 	"os"
+
+	"github.com/giantswarm/konfigure/pkg/sopsenv"
+
+	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
