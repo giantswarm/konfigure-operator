@@ -19,6 +19,8 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
+	"github.com/giantswarm/konfigure/pkg/sopsenv"
 	"os"
 
 	v1 "k8s.io/api/core/v1"
@@ -123,11 +125,11 @@ func main() {
 		// this setup is not recommended for production.
 	}
 
-	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
-	if err != nil {
-		setupLog.Error(err, "failed to parse label selector")
-		os.Exit(1)
-	}
+	//discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
+	//if err != nil {
+	//	setupLog.Error(err, "failed to parse label selector")
+	//	os.Exit(1)
+	//}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -138,8 +140,16 @@ func main() {
 		LeaderElectionID:       "5b7a9309.giantswarm.io",
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
+				&v1.ConfigMap{}: {
+					Label: labels.SelectorFromSet(labels.Set{
+						logic.GeneratedByLabel: logic.GeneratedByLabelValue,
+					}),
+				},
 				&v1.Secret{}: {
-					Label: discardHelmSecretsSelector,
+					Label: labels.SelectorFromSet(labels.Set{
+						logic.GeneratedByLabel:    logic.GeneratedByLabelValue,
+						sopsenv.KonfigureLabelKey: sopsenv.KonfigureLabelValue,
+					}),
 				},
 			},
 		},
