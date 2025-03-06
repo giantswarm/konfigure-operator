@@ -21,8 +21,6 @@ import (
 	"flag"
 	"os"
 
-	"github.com/giantswarm/konfigure/pkg/sopsenv"
-
 	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
 
 	v1 "k8s.io/api/core/v1"
@@ -143,8 +141,7 @@ func main() {
 				},
 				&v1.Secret{}: {
 					Label: labels.SelectorFromSet(labels.Set{
-						logic.GeneratedByLabel:    logic.GeneratedByLabelValue,
-						sopsenv.KonfigureLabelKey: sopsenv.KonfigureLabelValue,
+						logic.GeneratedByLabel: logic.GeneratedByLabelValue,
 					}),
 				},
 			},
