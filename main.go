@@ -127,12 +127,6 @@ func main() {
 		// this setup is not recommended for production.
 	}
 
-	//discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
-	//if err != nil {
-	//	setupLog.Error(err, "failed to parse label selector")
-	//	os.Exit(1)
-	//}
-
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
