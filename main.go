@@ -123,7 +123,7 @@ func main() {
 		// this setup is not recommended for production.
 	}
 
-	discardHelmSecretsSelector, err := labels.Parse("owner notin (Helm)")
+	discardHelmSecretsSelector, err := labels.Parse("owner notin (helm,Helm)")
 	if err != nil {
 		setupLog.Error(err, "failed to parse label selector")
 		os.Exit(1)
