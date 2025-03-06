@@ -21,6 +21,13 @@ import (
 	"flag"
 	"os"
 
+	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -125,6 +132,20 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "5b7a9309.giantswarm.io",
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&v1.ConfigMap{}: {
+					Label: labels.SelectorFromSet(labels.Set{
+						logic.GeneratedByLabel: logic.GeneratedByLabelValue,
+					}),
+				},
+				&v1.Secret{}: {
+					Label: labels.SelectorFromSet(labels.Set{
+						logic.GeneratedByLabel: logic.GeneratedByLabelValue,
+					}),
+				},
+			},
+		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly

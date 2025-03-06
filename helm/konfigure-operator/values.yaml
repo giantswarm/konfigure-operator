@@ -6,19 +6,19 @@ image:
 
 resources:
   limits:
-    cpu: 100m
-    memory: 512Mi
-  requests:
-    cpu: 50m
+    cpu: 150m
     memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
 
 volumes:
   cache:
-    sizeLimit: 64Mi
+    sizeLimit: 32Mi
   sopsenv:
-    sizeLimit: 4Mi
+    sizeLimit: 2Mi
   temp:
-    sizeLimit: 8Mi
+    sizeLimit: 4Mi
 
 # Vertical pod autoscaler
 verticalPodAutoscaler:

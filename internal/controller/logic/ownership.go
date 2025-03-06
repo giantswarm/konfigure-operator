@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	GeneratedByLabel     = "configuration.giantswarm.io/generated-by"
+	GeneratedByLabel      = "configuration.giantswarm.io/generated-by"
+	GeneratedByLabelValue = "konfigure-operator"
+
 	OwnerApiGroupLabel   = "configuration.giantswarm.io/ownerApiGroup"
 	OwnerApiVersionLabel = "configuration.giantswarm.io/ownerApiVersion"
 	OwnerKindLabel       = "configuration.giantswarm.io/ownerKind"
@@ -37,7 +39,7 @@ func GenerateOwnershipLabels(cr *v1alpha1.ManagementClusterConfiguration, revisi
 		version = "unknown"
 	}
 
-	labels[GeneratedByLabel] = "konfigure-operator"
+	labels[GeneratedByLabel] = GeneratedByLabelValue
 
 	labels[OwnerApiGroupLabel] = group
 	labels[OwnerApiVersionLabel] = version
