@@ -21,6 +21,11 @@ import (
 	"flag"
 	"os"
 
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -118,6 +123,12 @@ func main() {
 		// this setup is not recommended for production.
 	}
 
+	discardHelmSecretsSelector, err := labels.Parse("owner notin (Helm)")
+	if err != nil {
+		setupLog.Error(err, "failed to parse label selector")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
@@ -125,6 +136,13 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "5b7a9309.giantswarm.io",
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&v1.Secret{}: {
+					Label: discardHelmSecretsSelector,
+				},
+			},
+		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
