@@ -20,4 +20,3 @@ rules:
       - gitrepositories/status
     verbs:
       - get
-
