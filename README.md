@@ -123,7 +123,7 @@ configuration.giantswarm.io/ownerKind: ManagementClusterConfiguration
 configuration.giantswarm.io/ownerName: gauss-configuration
 configuration.giantswarm.io/ownerNamespace: giantswarm
 
-# This label is used to present which revision on the source was used to generate this manifest 
+# This label is used to present which revision on the source was used to generate this manifest
 configuration.giantswarm.io/revision: 38be874bfa3d627bf70366bd3ae43ff9dcfb4fcf
 ```
 
