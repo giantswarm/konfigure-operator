@@ -26,19 +26,21 @@ Encryption support is consisted of SOPS. The operator automatically fetches SOPS
 Generated configurations are applied to a destination namespace. The `.metadata.name` of these resources will be
 generated according to the following rules:
 
-- the core of is the app name as is present in e.g. `shared-configs` folder `default/apps`
+- the core of it is the app name as is present in e.g. `shared-configs` folder `default/apps`
 - if `.spec.destination.naming.prefix` is present, it will be prepended to the app name with a `-` character
   - this value must start and end with an alphanumeric character, can contain `-` characters within
-  - must be no longer than 64 characters long
+  - must be no longer than 64 characters
 - if `.spec.destination.naming.suffix` is present, it will be appended to the app name with a `-` character
   - this value must start and end with an alphanumeric character, can contain `-` characters within
-  - must be no longer than 64 characters long
+  - must be no longer than 64 characters
 - if `.spec.destination.naming.useSeparator` is set to false, the `-` character will be omitted from gluing the prefix
   and the suffix from the app name
 
  The reason for these restrictions is that ConfigMap and Secret `.metadata.name` field must follow:
  https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names.
 
+
+Here is an example:
 
 ```yaml
 apiVersion: konfigure.giantswarm.io/v1alpha1
@@ -133,8 +135,8 @@ condition.
 
 > ⚠️ Please note that "transactions" are not supported at the moment, meaning that if a configmap and a secret is generated
 > successfully, we do not try to atomically apply both of them to the server. First the config map is applied, then the
-> secret. If let's say the secret apply fails, we do not revert the config map. Such scenario will mark the apps as failed
-> tho.
+> secret. If let's say the secret apply fails, we do not revert the config map. Such scenario will mark the app as failed
+> tho in `.status.failures`.
 
 ##### .reconciliation
 
@@ -163,7 +165,7 @@ Here is an example of a failure scenario:
 status:
   conditions:
     - lastTransitionTime: "2025-03-12T15:06:07Z"
-      message: 'Attempted revision: 9eb2f00e201df4f9d2b1e3a15e870e2b911726ab'
+      message: 'Attempted revision: c8f73a3b5ad0ddaad337d78f4e49ea8eae49d2a7'
       observedGeneration: 4
       reason: ReconciliationFailed
       status: "False"
@@ -176,7 +178,7 @@ status:
       template: main:75:37: executing "main" at <.workloadCluster.ssh.ssoPublicKey>:
       map has no entry for key "ssoPublicKey"'
   lastAppliedRevision: 9eb2f00e201df4f9d2b1e3a15e870e2b911726ab
-  lastAttemptedRevision: 9eb2f00e201df4f9d2b1e3a15e870e2b911726ab
+  lastAttemptedRevision: c8f73a3b5ad0ddaad337d78f4e49ea8eae49d2a7
   lastReconciledAt: "2025-03-12T15:06:07.572012492Z"
   misses:
     - no-such-operator
