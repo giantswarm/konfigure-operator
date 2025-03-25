@@ -11,15 +11,17 @@ import (
 )
 
 const (
-	GeneratedByLabel      = "configuration.giantswarm.io/generated-by"
+	KonfigureOperatorPrefix = "configuration.giantswarm.io"
+
+	GeneratedByLabel      = KonfigureOperatorPrefix + "/generated-by"
 	GeneratedByLabelValue = "konfigure-operator"
 
-	OwnerApiGroupLabel   = "configuration.giantswarm.io/ownerApiGroup"
-	OwnerApiVersionLabel = "configuration.giantswarm.io/ownerApiVersion"
-	OwnerKindLabel       = "configuration.giantswarm.io/ownerKind"
-	OwnerNameLabel       = "configuration.giantswarm.io/ownerName"
-	OwnerNamespaceLabel  = "configuration.giantswarm.io/ownerNamespace"
-	RevisionLabel        = "configuration.giantswarm.io/revision"
+	OwnerApiGroupLabel   = KonfigureOperatorPrefix + "/ownerApiGroup"
+	OwnerApiVersionLabel = KonfigureOperatorPrefix + "/ownerApiVersion"
+	OwnerKindLabel       = KonfigureOperatorPrefix + "/ownerKind"
+	OwnerNameLabel       = KonfigureOperatorPrefix + "/ownerName"
+	OwnerNamespaceLabel  = KonfigureOperatorPrefix + "/ownerNamespace"
+	RevisionLabel        = KonfigureOperatorPrefix + "/revision"
 )
 
 func GenerateOwnershipLabels(cr *v1alpha1.ManagementClusterConfiguration, revision string) map[string]string {

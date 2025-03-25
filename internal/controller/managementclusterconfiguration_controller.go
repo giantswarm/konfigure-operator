@@ -396,18 +396,38 @@ func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context
 	return nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
-	desiredCm := v1.ConfigMap{
+func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, generatedConfigMap *v1.ConfigMap) error {
+	existingObject := &v1.ConfigMap{}
+
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedConfigMap), existingObject)
+
+	// Respect external annotations and labels.
+	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
+	externalAnnotations := filterExternalFromMap(existingObject.Annotations)
+	externalLabels := filterExternalFromMap(existingObject.Labels)
+
+	desiredConfigMap := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      configmap.Name,
-			Namespace: configmap.Namespace,
+			Name:        generatedConfigMap.Name,
+			Namespace:   generatedConfigMap.Namespace,
+			Annotations: externalAnnotations,
+			Labels:      externalLabels,
 		},
 	}
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &desiredCm, func() error {
-		desiredCm.Labels = configmap.Labels
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredConfigMap, func() error {
+		// Enforce desired annotations
+		for _, annotation := range generatedConfigMap.Annotations {
+			desiredConfigMap.Annotations[annotation] = generatedConfigMap.Annotations[annotation]
+		}
 
-		desiredCm.Data = configmap.Data
+		// Enforce desired labels
+		for _, label := range generatedConfigMap.Labels {
+			desiredConfigMap.Labels[label] = generatedConfigMap.Labels[label]
+		}
+
+		// Always enforce data
+		desiredConfigMap.Data = generatedConfigMap.Data
 
 		return nil
 	})
@@ -415,9 +435,9 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 	return err
 }
 
-func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Context, secret *v1.Secret) error {
+func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Context, generatedSecret *v1.Secret) error {
 	existingObject := &v1.Secret{}
-	err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), existingObject)
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
 
 	if err != nil {
 		if apiMachineryErrors.IsNotFound(err) {
@@ -427,30 +447,65 @@ func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Co
 		return err
 	}
 
-	if err = logic.MatchOwnership(existingObject.ObjectMeta, secret.ObjectMeta); err != nil {
+	if err = logic.MatchOwnership(existingObject.ObjectMeta, generatedSecret.ObjectMeta); err != nil {
 		return fmt.Errorf("desired secret exists already and is owned by another object: %s", err.Error())
 	}
 
 	return nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, secret *v1.Secret) error {
+func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, generatedSecret *v1.Secret) error {
+	existingObject := &v1.Secret{}
+
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
+
+	// Respect external annotations and labels.
+	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
+	externalAnnotations := filterExternalFromMap(existingObject.Annotations)
+	externalLabels := filterExternalFromMap(existingObject.Labels)
+
 	desiredSecret := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secret.Name,
-			Namespace: secret.Namespace,
+			Name:        generatedSecret.Name,
+			Namespace:   generatedSecret.Namespace,
+			Annotations: externalAnnotations,
+			Labels:      externalLabels,
 		},
 	}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
-		desiredSecret.Labels = secret.Labels
 
-		desiredSecret.Data = secret.Data
-		desiredSecret.StringData = secret.StringData
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
+		// Enforce desired annotations
+		for _, annotation := range generatedSecret.Annotations {
+			desiredSecret.Annotations[annotation] = generatedSecret.Annotations[annotation]
+		}
+
+		// Enforce desired labels
+		for _, label := range generatedSecret.Labels {
+			desiredSecret.Labels[label] = generatedSecret.Labels[label]
+		}
+
+		// Always enforce data
+		desiredSecret.Data = generatedSecret.Data
+		desiredSecret.StringData = generatedSecret.StringData
 
 		return nil
 	})
 
 	return err
+}
+
+func filterExternalFromMap(existing map[string]string) map[string]string {
+	externals := make(map[string]string)
+
+	for _, key := range existing {
+		if strings.HasPrefix(key, logic.KonfigureOperatorPrefix) {
+			continue
+		}
+
+		externals[key] = existing[key]
+	}
+
+	return externals
 }
 
 // SetupWithManager sets up the controller with the Manager.
