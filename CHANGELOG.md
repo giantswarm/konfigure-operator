@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Respect external labels on generated resources. An annotation or label is considered internal
+  when it is prefixed with `configuration.giantswarm.io`. The state of internal annotations and labels is enforced
+  on each reconciliation.
+
 ## [0.1.0] - 2025-03-12
 
 ### Added
