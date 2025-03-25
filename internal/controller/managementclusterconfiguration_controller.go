@@ -379,13 +379,9 @@ func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx co
 
 func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
 	existingObject := &v1.ConfigMap{}
+
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(configmap), existingObject)
-
-	if err != nil {
-		if apiMachineryErrors.IsNotFound(err) {
-			return nil
-		}
-
+	if err != nil && !apiMachineryErrors.IsNotFound(err) {
 		return err
 	}
 
@@ -400,6 +396,9 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 	existingObject := &v1.ConfigMap{}
 
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedConfigMap), existingObject)
+	if err != nil && !apiMachineryErrors.IsNotFound(err) {
+		return err
+	}
 
 	// Respect external annotations and labels.
 	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
@@ -437,13 +436,9 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 
 func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Context, generatedSecret *v1.Secret) error {
 	existingObject := &v1.Secret{}
+
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
-
-	if err != nil {
-		if apiMachineryErrors.IsNotFound(err) {
-			return nil
-		}
-
+	if err != nil && !apiMachineryErrors.IsNotFound(err) {
 		return err
 	}
 
@@ -458,6 +453,9 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 	existingObject := &v1.Secret{}
 
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
+	if err != nil && !apiMachineryErrors.IsNotFound(err) {
+		return err
+	}
 
 	// Respect external annotations and labels.
 	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
