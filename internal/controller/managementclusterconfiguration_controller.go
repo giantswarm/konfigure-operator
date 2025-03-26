@@ -381,7 +381,11 @@ func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context
 	existingObject := &v1.ConfigMap{}
 
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(configmap), existingObject)
-	if err != nil && !apiMachineryErrors.IsNotFound(err) {
+	if err != nil {
+		if apiMachineryErrors.IsNotFound(err) {
+			return nil
+		}
+
 		return err
 	}
 
@@ -416,13 +420,13 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredConfigMap, func() error {
 		// Enforce desired annotations
-		for _, annotation := range generatedConfigMap.Annotations {
-			desiredConfigMap.Annotations[annotation] = generatedConfigMap.Annotations[annotation]
+		for key, value := range generatedConfigMap.Annotations {
+			desiredConfigMap.Annotations[key] = value
 		}
 
 		// Enforce desired labels
-		for _, label := range generatedConfigMap.Labels {
-			desiredConfigMap.Labels[label] = generatedConfigMap.Labels[label]
+		for key, value := range generatedConfigMap.Labels {
+			desiredConfigMap.Labels[key] = value
 		}
 
 		// Always enforce data
@@ -438,7 +442,11 @@ func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Co
 	existingObject := &v1.Secret{}
 
 	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
-	if err != nil && !apiMachineryErrors.IsNotFound(err) {
+	if err != nil {
+		if apiMachineryErrors.IsNotFound(err) {
+			return nil
+		}
+
 		return err
 	}
 
@@ -473,13 +481,13 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
 		// Enforce desired annotations
-		for _, annotation := range generatedSecret.Annotations {
-			desiredSecret.Annotations[annotation] = generatedSecret.Annotations[annotation]
+		for key, value := range generatedSecret.Annotations {
+			desiredSecret.Annotations[key] = value
 		}
 
 		// Enforce desired labels
-		for _, label := range generatedSecret.Labels {
-			desiredSecret.Labels[label] = generatedSecret.Labels[label]
+		for key, value := range generatedSecret.Labels {
+			desiredSecret.Labels[key] = value
 		}
 
 		// Always enforce data
