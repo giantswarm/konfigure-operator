@@ -9,3 +9,9 @@ CVE-2025-27144 until=2025-12-31
 
 # pkg:golang/golang.org/x/crypto@v0.32.0
 CVE-2025-22869 until=2025-12-31
+
+# pkg:golang/golang.org/x/net@v0.34.0
+CVE-2025-22870 until=2025-12-31
+
+# pkg:golang/github.com/golang-jwt/jwt/v5@v5.2.1
+CVE-2025-30204 until=2025-12-31
