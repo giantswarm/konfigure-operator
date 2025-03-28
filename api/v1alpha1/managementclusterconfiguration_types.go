@@ -168,6 +168,7 @@ type FailureStatus struct {
 // +kubebuilder:printcolumn:name="Prefix",type="string",JSONPath=".spec.destination.naming.prefix",description=""
 // +kubebuilder:printcolumn:name="Suffix",type="string",JSONPath=".spec.destination.naming.suffix",description=""
 // +kubebuilder:printcolumn:name="UseSeparator",type="boolean",JSONPath=".spec.destination.naming.useSeparator",description=""
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description=""
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
 type ManagementClusterConfiguration struct {
