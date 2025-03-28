@@ -137,7 +137,7 @@ func TestFilterApps(t *testing.T) {
 			matches, misses, err := filterApps(tc.allApps, tc.includeExactMatchers, tc.includeRegexMatchers, tc.excludeExactMatchers, tc.excludeRegexMatchers)
 			if err != nil {
 				if tc.expectedError != nil {
-					if !(reflect.TypeOf(err) == reflect.TypeOf(tc.expectedError)) {
+					if reflect.TypeOf(err) != reflect.TypeOf(tc.expectedError) {
 						t.Fatalf("expected error: %v, got: %v", tc.expectedError, err)
 					}
 				} else {
