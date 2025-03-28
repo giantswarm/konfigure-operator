@@ -406,8 +406,8 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 
 	// Respect external annotations and labels.
 	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
-	externalAnnotations := filterExternalFromMap(existingObject.Annotations)
-	externalLabels := filterExternalFromMap(existingObject.Labels)
+	externalAnnotations := logic.FilterExternalFromMap(existingObject.Annotations)
+	externalLabels := logic.FilterExternalFromMap(existingObject.Labels)
 
 	desiredConfigMap := v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -467,8 +467,8 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 
 	// Respect external annotations and labels.
 	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
-	externalAnnotations := filterExternalFromMap(existingObject.Annotations)
-	externalLabels := filterExternalFromMap(existingObject.Labels)
+	externalAnnotations := logic.FilterExternalFromMap(existingObject.Annotations)
+	externalLabels := logic.FilterExternalFromMap(existingObject.Labels)
 
 	desiredSecret := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -498,20 +498,6 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 	})
 
 	return err
-}
-
-func filterExternalFromMap(existing map[string]string) map[string]string {
-	externals := make(map[string]string)
-
-	for _, key := range existing {
-		if strings.HasPrefix(key, logic.KonfigureOperatorPrefix) {
-			continue
-		}
-
-		externals[key] = existing[key]
-	}
-
-	return externals
 }
 
 // SetupWithManager sets up the controller with the Manager.
