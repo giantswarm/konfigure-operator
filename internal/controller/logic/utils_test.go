@@ -2,9 +2,10 @@ package logic
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"reflect"
 	"testing"
+
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestFilterExternalFromMap(t *testing.T) {
