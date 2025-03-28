@@ -16,7 +16,32 @@ spec:
     singular: managementclusterconfiguration
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.configuration.cluster.name
+      name: Cluster
+      type: string
+    - jsonPath: .spec.destination.namespace
+      name: Destination
+      type: string
+    - jsonPath: .spec.destination.naming.prefix
+      name: Prefix
+      type: string
+    - jsonPath: .spec.destination.naming.suffix
+      name: Suffix
+      type: string
+    - jsonPath: .spec.destination.naming.useSeparator
+      name: UseSeparator
+      type: boolean
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Status
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ManagementClusterConfiguration is the Schema for the managementclusterconfigurations
