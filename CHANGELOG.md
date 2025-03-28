@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] - 2025-03-28
 
+### Fixed
+
+- Fix map filtering logic used to respect external annotations and labels on generated resources.
+
 ## [0.1.1] - 2025-03-28
 
 ### Added
