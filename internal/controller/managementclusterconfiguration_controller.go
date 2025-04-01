@@ -86,7 +86,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	}()
 
 	// Handle finalizer
-	if cr.ObjectMeta.DeletionTimestamp.IsZero() {
+	if cr.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
@@ -231,7 +231,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	// Status update for missed matchers
 	cr.Status.Misses = missedExactMatchers
 
-	cr.Status.ObservedGeneration = cr.ObjectMeta.Generation
+	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
 
 	cr.Status.LastAttemptedRevision = revision
@@ -243,7 +243,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
 			Type:               logic.ReadyCondition,
 			Status:             metav1.ConditionTrue,
-			ObservedGeneration: cr.ObjectMeta.Generation,
+			ObservedGeneration: cr.Generation,
 			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
 			Reason:             logic.ReconciliationSucceededReason,
 			Message:            fmt.Sprintf("Applied revision: %s", revision),
@@ -252,7 +252,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
 			Type:               logic.ReadyCondition,
 			Status:             metav1.ConditionFalse,
-			ObservedGeneration: cr.ObjectMeta.Generation,
+			ObservedGeneration: cr.Generation,
 			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
 			Reason:             logic.ReconciliationFailedReason,
 			Message:            fmt.Sprintf("Attempted revision: %s", revision),
@@ -333,7 +333,7 @@ func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx conte
 }
 
 func (r *ManagementClusterConfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.ManagementClusterConfiguration, err error) error {
-	cr.Status.ObservedGeneration = cr.ObjectMeta.Generation
+	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
 
 	cr.Status.Conditions = []metav1.Condition{}
@@ -341,7 +341,7 @@ func (r *ManagementClusterConfigurationReconciler) updateStatusOnSetupFailure(ct
 	cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
 		Type:               logic.ReadyCondition,
 		Status:             metav1.ConditionFalse,
-		ObservedGeneration: cr.ObjectMeta.Generation,
+		ObservedGeneration: cr.Generation,
 		LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
 		Reason:             logic.SetupFailedReason,
 		Message:            fmt.Sprintf("Setup failed: %s", err.Error()),
@@ -380,7 +380,7 @@ func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx co
 func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
 	existingObject := &v1.ConfigMap{}
 
-	err := r.Client.Get(ctx, client.ObjectKeyFromObject(configmap), existingObject)
+	err := r.Get(ctx, client.ObjectKeyFromObject(configmap), existingObject)
 	if err != nil {
 		if apiMachineryErrors.IsNotFound(err) {
 			return nil
@@ -399,7 +399,7 @@ func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context
 func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, generatedConfigMap *v1.ConfigMap) error {
 	existingObject := &v1.ConfigMap{}
 
-	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedConfigMap), existingObject)
+	err := r.Get(ctx, client.ObjectKeyFromObject(generatedConfigMap), existingObject)
 	if err != nil && !apiMachineryErrors.IsNotFound(err) {
 		return err
 	}
@@ -441,7 +441,7 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Context, generatedSecret *v1.Secret) error {
 	existingObject := &v1.Secret{}
 
-	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
+	err := r.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
 	if err != nil {
 		if apiMachineryErrors.IsNotFound(err) {
 			return nil
@@ -460,7 +460,7 @@ func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Co
 func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, generatedSecret *v1.Secret) error {
 	existingObject := &v1.Secret{}
 
-	err := r.Client.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
+	err := r.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
 	if err != nil && !apiMachineryErrors.IsNotFound(err) {
 		return err
 	}
