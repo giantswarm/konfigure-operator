@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+	. "github.com/onsi/ginkgo/v2" //nolint:all
 )
 
 func GetEnv(key, fallback string) string {
@@ -20,7 +20,7 @@ func GetEnv(key, fallback string) string {
 
 const charset = "abcdefghijklmnopqrstuvwxyz"
 
-var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:all
 
 func StringWithCharset(length int, charset string) string {
 	b := make([]byte, length)
