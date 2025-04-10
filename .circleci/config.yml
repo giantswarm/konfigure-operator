@@ -45,7 +45,6 @@ workflows:
 
     - architect/run-tests-with-ats:
         name: ats-functional-tests
-        setup-script: tests/ats/setup.sh
         additional_app-test-suite_flags: "--functional-tests-cluster-type kind --test-executor pytest --skip-steps smoke upgrade"
         app-test-suite_version: "v0.10.3"
         app-test-suite_container_tag: "0.10.3"
