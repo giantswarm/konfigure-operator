@@ -1,6 +1,8 @@
 import abc
 import base64
 import logging
+import os
+from pathlib import Path
 from typing import Dict, Any
 
 import pykube
@@ -72,6 +74,7 @@ def setup(kube_cluster: Cluster):
         timeout_sec=60,
     )
 
+    # SOPS AGE keys
     secret_example_config_sops_age_key = {
         "apiVersion": "v1",
         "kind": "Secret",
@@ -95,6 +98,7 @@ def setup(kube_cluster: Cluster):
     else:
         secret_obj_example_config_sops_age_key.create()
 
+    # example-configs gitrepo
     gitrepo_example_configs = make_git_repository_obj(
         kube_cluster.kube_client,
         name="example-configs",
@@ -115,6 +119,20 @@ def setup(kube_cluster: Cluster):
         git_repo_namespace="default",
         timeout_sec=45,
     )
+
+    # CRDs
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+
+    text_mcc = Path(f"{dir_path}/../../config/crd/bases/konfigure.giantswarm.io_managementclusterconfigurations.yaml").read_text()
+    dict_mcc = yaml.load(text_mcc, SafeLoader)
+
+    crd_mcc = pykube.CustomResourceDefinition(kube_cluster.kube_client, dict_mcc)
+
+    if crd_mcc.exists():
+        crd_mcc.update()
+    else:
+        crd_mcc.create()
+
 
 @pytest.mark.functional
 def test_api_working(kube_cluster: Cluster) -> None:
