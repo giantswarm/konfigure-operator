@@ -9,7 +9,7 @@ import pykube
 import pytest
 import yaml
 from pykube.objects import NamespacedAPIObject
-from pytest_helm_charts.clusters import Cluster
+from pytest_helm_charts.clusters import Cluster, ExistingCluster
 from pytest_helm_charts.flux.git_repository import make_git_repository_obj, wait_for_git_repositories_to_be_ready
 from pytest_helm_charts.giantswarm_app_platform.app import make_app_object, ConfiguredApp
 from pytest_helm_charts.giantswarm_app_platform.catalog import make_catalog_obj
@@ -148,6 +148,10 @@ def test_api_working(kube_cluster: Cluster) -> None:
 
 @pytest.mark.functional
 def test_mcc_working(setup, kube_cluster: Cluster) -> None:
+    # THIS IS A MUST TO BE ABLE TO INTERACT WITH CRDs APPLIED DURING TEST COS THE ORIGINAL CLIENT ALREADY DID DISCOVERY
+    # AND IS BEING REUSED ACROSS TESTS
+    fresh_kube_client = ExistingCluster(kube_config_path=kube_cluster.kube_config_path).create()
+
     cr: Dict[str, Any] = {
         "apiVersion": ManagementClusterConfigurationCR.version,
         "kind": ManagementClusterConfigurationCR.kind,
@@ -197,7 +201,7 @@ def test_mcc_working(setup, kube_cluster: Cluster) -> None:
         }
     }
 
-    example1 = ManagementClusterConfigurationCR(kube_cluster.kube_client, cr)
+    example1 = ManagementClusterConfigurationCR(fresh_kube_client, cr)
 
     if example1.exists():
         example1.update()
@@ -205,7 +209,7 @@ def test_mcc_working(setup, kube_cluster: Cluster) -> None:
         example1.create()
 
     wait_for_objects_condition(
-        kube_cluster.kube_client,
+        fresh_kube_client,
         ManagementClusterConfigurationCR,
         ["example-1"],
         "default",
@@ -214,7 +218,7 @@ def test_mcc_working(setup, kube_cluster: Cluster) -> None:
         False,
     )
 
-    cm_app_1_ex_1 = pykube.ConfigMap.objects(kube_cluster.kube_client).get(name="app-1-ex1", namespace="default")
+    cm_app_1_ex_1 = pykube.ConfigMap.objects(fresh_kube_client).get(name="app-1-ex1", namespace="default")
 
     values_app_1_ex_1 = yaml.load(cm_app_1_ex_1.obj.get("data", {}).get("configmap-values.yaml", ""), SafeLoader)
 
@@ -224,7 +228,7 @@ def test_mcc_working(setup, kube_cluster: Cluster) -> None:
 
     assert values_app_1_ex_1.get("todo", {}).get("items", []) == ["item-1", "item-2", "item-3"]
 
-    secret_app_1_ex_1 = pykube.Secret.objects(kube_cluster.kube_client).get(name="app-1-ex1", namespace="default")
+    secret_app_1_ex_1 = pykube.Secret.objects(fresh_kube_client).get(name="app-1-ex1", namespace="default")
 
     secret_values_app_1_ex_1 = yaml.load(base64.b64decode(secret_app_1_ex_1.obj.get("data", {}).get("secret-values.yaml", "")), SafeLoader)
 
