@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Use a single `CiliumNetworkPolicy` to access Kubernetes API and allow traffic within the cluster.
+
+### Removed
+
+- Remove `NetworkPolicy` that only allowed access to the Flux `source-controller`. Replaced with above `CiliumNetworkPolicy`.
+
 ## [0.2.0] - 2025-04-11
 
 ### Added
