@@ -113,6 +113,11 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		return ctrl.Result{}, nil
 	}
 
+	if cr.Spec.Reconciliation.Suspend {
+		logger.Info("Reconciliation is suspended for this object, skipping until next update.")
+		return ctrl.Result{}, nil
+	}
+
 	// Initialize Konfigure
 	sops, err := r.initializeSopsEnv(ctx)
 	if err != nil {
