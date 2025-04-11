@@ -2,10 +2,21 @@
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
     "properties": {
+        "cilium": {
+            "type": "object",
+            "properties": {
+                "enforce": {
+                    "type": "boolean"
+                }
+            }
+        },
         "image": {
             "type": "object",
             "properties": {
                 "name": {
+                    "type": "string"
+                },
+                "pullPolicy": {
                     "type": "string"
                 },
                 "registry": {
