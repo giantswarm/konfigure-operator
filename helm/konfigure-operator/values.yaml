@@ -3,6 +3,7 @@ image:
   registry: gsoci.azurecr.io
   name: "giantswarm/konfigure-operator"
   tag: ""
+  pullPolicy: IfNotPresent
 
 resources:
   limits:

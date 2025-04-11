@@ -117,6 +117,10 @@ type Reconciliation struct {
 	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
 	// +optional
 	RetryInterval *metav1.Duration `json:"retryInterval,omitempty"`
+
+	// +kubebuilder:default:=false
+	// +optional
+	Suspend bool `json:"suspend,omitempty"`
 }
 
 // ManagementClusterConfigurationStatus defines the observed state of ManagementClusterConfiguration.
