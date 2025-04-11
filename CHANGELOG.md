@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support `.spec.reconciliation.suspend` on `ManagementClusterConfiguration` CRD.
+- Support Helm chart value `.image.pullPolicy`, defaults to: `IfNotPresent`.
 
 ## [0.1.2] - 2025-03-28
 
