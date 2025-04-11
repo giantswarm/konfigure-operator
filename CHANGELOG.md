@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-04-11
+
 ### Added
 
 - Support `.spec.reconciliation.suspend` on `ManagementClusterConfiguration` CRD.
@@ -32,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial implementation according to: https://github.com/giantswarm/rfc/pull/108
 
-[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/giantswarm/konfigure-operator/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/giantswarm/konfigure-operator/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/giantswarm/konfigure-operator/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/giantswarm/konfigure-operator/compare/v0.1.0...v0.1.0
