@@ -17,4 +17,6 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
   echo "Installing new konfigure-operator helm release in default namespace"
   helm install -n default -n default --set "image.tag=black" konfigure-operator ./helm/konfigure-operator
+
+  kubectl rollout restart -n default deployment konfigure-operator
 )
