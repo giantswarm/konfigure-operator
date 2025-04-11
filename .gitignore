@@ -7,6 +7,9 @@
 bin/*
 Dockerfile.cross
 
+# ATS tests
+__pycache__
+
 # build result
 /konfigure-operator*
 
