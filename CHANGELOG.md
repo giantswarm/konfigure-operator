@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed triggering reconciliation after adding finalizer to `ManagementClusterConfiguration` CRs.
+
 ## [0.3.0] - 2025-04-11
 
 ### Added
