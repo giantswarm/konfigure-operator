@@ -91,13 +91,18 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		// then lets add the finalizer and update the object. This is equivalent
 		// to registering our finalizer.
 		if !controllerutil.ContainsFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer) {
-			controllerutil.AddFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer)
+			logger.Info(fmt.Sprintf("Adding finalizer: %s to %s/%s", konfigurev1alpha1.KonfigureOperatorFinalizer, cr.GetNamespace(), cr.GetName()))
+
+			finalizersUpdated := controllerutil.AddFinalizer(cr, konfigurev1alpha1.KonfigureOperatorFinalizer)
+			if !finalizersUpdated {
+				logger.Error(nil, fmt.Sprintf("Failed to add finalizer: %s to %s/%s", konfigurev1alpha1.KonfigureOperatorFinalizer, cr.GetNamespace(), cr.GetName()))
+			}
+
 			if err := r.Update(ctx, cr); err != nil {
 				return ctrl.Result{}, err
 			}
 
-			// The update will trigger a requeue, if we set `Requeue: true`, it will trigger an additional time.
-			return ctrl.Result{}, nil
+			return ctrl.Result{Requeue: true}, nil
 		}
 	} else {
 		// The object is being deleted
