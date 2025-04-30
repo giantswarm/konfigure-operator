@@ -5,4 +5,4 @@ chart-dir: ./helm/konfigure-operator
 destination: ./build
 
 # CI overwrites this, check .circleci/config.yaml
-catalog-base-url: https://giantswarm.github.io/giantswarm-catalog/
+catalog-base-url: https://giantswarm.github.io/control-plane-catalog/
