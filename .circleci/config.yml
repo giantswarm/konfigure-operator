@@ -29,8 +29,8 @@ workflows:
         context: architect
         executor: app-build-suite
         name: push-to-app-catalog
-        app_catalog: giantswarm-catalog
-        app_catalog_test: giantswarm-test-catalog
+        app_catalog: control-plane-catalog
+        app_catalog_test: control-plane-test-catalog
         chart: konfigure-operator
         # This is needed for `architect/run-tests-with-ats` to work
         persist_chart_archive: true
