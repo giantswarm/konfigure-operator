@@ -174,6 +174,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	ownershipLabels := logic.GenerateOwnershipLabels(cr, revision)
 
 	failures := make(map[string]string)
+	var disabledReconciles []konfigurev1alpha1.DisabledReconcile
 	for _, appToRender := range appsToRender {
 		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, revision, cr.Spec.Destination, ownershipLabels)
 
@@ -208,7 +209,20 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			continue
 		}
 
-		err = r.applyConfigMap(ctx, configmap)
+		disabledReconcile, err := r.applyConfigMap(ctx, configmap)
+		if disabledReconcile {
+			logger.Info(fmt.Sprintf("Skipping apply for configmap %s/%s as it disabled for reconciliation", configmap.Namespace, configmap.Name))
+
+			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
+				AppName: appToRender,
+				Kind:    "ConfigMap",
+				Target: konfigurev1alpha1.DisabledReconcileTarget{
+					Name:      secret.Name,
+					Namespace: secret.Namespace,
+				},
+			})
+		}
+
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to apply configmap %s/%s for app: %s", configmap.Namespace, configmap.Name, appToRender))
 
@@ -216,7 +230,20 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			continue
 		}
 
-		err = r.applySecret(ctx, secret)
+		disabledReconcile, err = r.applySecret(ctx, secret)
+		if disabledReconcile {
+			logger.Info(fmt.Sprintf("Skipping apply for secret %s/%s as it disabled for reconciliation", configmap.Namespace, configmap.Name))
+
+			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
+				AppName: appToRender,
+				Kind:    "ConfigMap",
+				Target: konfigurev1alpha1.DisabledReconcileTarget{
+					Name:      secret.Name,
+					Namespace: secret.Namespace,
+				},
+			})
+		}
+
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to apply secret %s/%s for app: %s", secret.Namespace, secret.Name, appToRender))
 
@@ -237,6 +264,9 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			Message: failureMessage,
 		})
 	}
+
+	// Status update for disabled reconciles
+	cr.Status.DisabledReconciles = disabledReconciles
 
 	// Status update for missed matchers
 	cr.Status.Misses = missedExactMatchers
@@ -406,12 +436,16 @@ func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context
 	return nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, generatedConfigMap *v1.ConfigMap) error {
+func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, generatedConfigMap *v1.ConfigMap) (bool, error) {
 	existingObject := &v1.ConfigMap{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(generatedConfigMap), existingObject)
 	if err != nil && !apiMachineryErrors.IsNotFound(err) {
-		return err
+		return true, err
+	}
+
+	if !logic.ShouldReconcile(existingObject.ObjectMeta) {
+		return false, nil
 	}
 
 	// Respect external annotations and labels.
@@ -445,7 +479,7 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 		return nil
 	})
 
-	return err
+	return true, err
 }
 
 func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Context, generatedSecret *v1.Secret) error {
@@ -467,12 +501,16 @@ func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Co
 	return nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, generatedSecret *v1.Secret) error {
+func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, generatedSecret *v1.Secret) (bool, error) {
 	existingObject := &v1.Secret{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
 	if err != nil && !apiMachineryErrors.IsNotFound(err) {
-		return err
+		return true, err
+	}
+
+	if !logic.ShouldReconcile(existingObject.ObjectMeta) {
+		return false, nil
 	}
 
 	// Respect external annotations and labels.
@@ -507,7 +545,7 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 		return nil
 	})
 
-	return err
+	return true, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

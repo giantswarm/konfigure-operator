@@ -150,6 +150,9 @@ type ManagementClusterConfigurationStatus struct {
 
 	// +optional
 	Misses []string `json:"misses,omitempty"`
+
+	// +optional
+	DisabledReconciles []DisabledReconcile `json:"disabledReconciles,omitempty"`
 }
 
 type FailureStatus struct {
@@ -160,6 +163,26 @@ type FailureStatus struct {
 	// +kubebuilder:validation:Type=string
 	// +required
 	Message string `json:"message"`
+}
+
+type DisabledReconcile struct {
+	// +kubebuilder:validation:Type=string
+	// +required
+	AppName string `json:"appName"`
+
+	// +kubebuilder:validation:Type=string
+	// +required
+	Kind string `json:"kind"`
+
+	// +required
+	Target DisabledReconcileTarget `json:"target"`
+}
+
+type DisabledReconcileTarget struct {
+	// +required
+	Name string `json:"name"`
+	// +required
+	Namespace string `json:"namespace"`
 }
 
 // +kubebuilder:object:root=true
