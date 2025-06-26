@@ -211,7 +211,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 		shouldReconcile, err := r.applyConfigMap(ctx, configmap)
 		if !shouldReconcile {
-			logger.Info(fmt.Sprintf("Skipping apply for configmap %s/%s as it disabled for reconciliation", configmap.Namespace, configmap.Name))
+			logger.Info(fmt.Sprintf("Skipping apply for configmap %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
 
 			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
 				AppName: appToRender,
@@ -232,11 +232,11 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 		shouldReconcile, err = r.applySecret(ctx, secret)
 		if !shouldReconcile {
-			logger.Info(fmt.Sprintf("Skipping apply for secret %s/%s as it disabled for reconciliation", configmap.Namespace, configmap.Name))
+			logger.Info(fmt.Sprintf("Skipping apply for secret %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
 
 			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
 				AppName: appToRender,
-				Kind:    "ConfigMap",
+				Kind:    "Secret",
 				Target: konfigurev1alpha1.DisabledReconcileTarget{
 					Name:      secret.Name,
 					Namespace: secret.Namespace,
@@ -251,7 +251,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Successfully applied rendered configmap and secret for: %s", appToRender))
+		logger.Info(fmt.Sprintf("Successfully reconciled rendered configmap and secret for: %s", appToRender))
 	}
 
 	// Status update for failures
