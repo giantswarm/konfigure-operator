@@ -2,8 +2,9 @@ package logic
 
 import (
 	"fmt"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestShouldReconcile(t *testing.T) {
