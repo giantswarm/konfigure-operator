@@ -209,8 +209,8 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			continue
 		}
 
-		disabledReconcile, err := r.applyConfigMap(ctx, configmap)
-		if disabledReconcile {
+		shouldReconcile, err := r.applyConfigMap(ctx, configmap)
+		if !shouldReconcile {
 			logger.Info(fmt.Sprintf("Skipping apply for configmap %s/%s as it disabled for reconciliation", configmap.Namespace, configmap.Name))
 
 			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
@@ -230,8 +230,8 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 			continue
 		}
 
-		disabledReconcile, err = r.applySecret(ctx, secret)
-		if disabledReconcile {
+		shouldReconcile, err = r.applySecret(ctx, secret)
+		if !shouldReconcile {
 			logger.Info(fmt.Sprintf("Skipping apply for secret %s/%s as it disabled for reconciliation", configmap.Namespace, configmap.Name))
 
 			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
