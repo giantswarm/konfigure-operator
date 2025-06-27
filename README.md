@@ -155,6 +155,32 @@ The `.flux.gitRepository` section should contain the `.name` and `.namespace` of
 The `.flux.service.url` field can point to any Flux `source-contoller` service URL. If not set, it is defaulted to the
 standard Flux deployment: `source-controller.flux.svc`.
 
+###### Temporarily disabling reconciliation of generated config maps and secret
+
+The label `configuration.giantswarm.io/reconcile` - not supported as annotation - can be added with value `disabled` to
+generated config maps and secrets to disable `konfigure-operator` updating them on each reconciliation.
+
+```yaml
+configuration.giantswarm.io/reconcile: disabled
+```
+
+Disabled resources will be marked on the `ManagementClusterConfiguration` CR's `.status.disabledReconciles` field:
+
+```yaml
+status:
+  disabledReconciles:
+  - appName: konfigure-operator
+    kind: ConfigMap
+    target:
+      name: konfigure-operator-konfiguration
+      namespace: giantswarm
+  - appName: konfigure-operator
+    kind: Secret
+    target:
+      name: konfigure-operator-konfiguration
+      namespace: giantswarm
+```
+
 #### Status
 
 Example status can be used to diagnose issues with the configuration CR.
