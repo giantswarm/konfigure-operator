@@ -11,8 +11,6 @@ import (
 )
 
 const (
-	KonfigureOperatorPrefix = "configuration.giantswarm.io"
-
 	GeneratedByLabel      = KonfigureOperatorPrefix + "/generated-by"
 	GeneratedByLabelValue = "konfigure-operator"
 
