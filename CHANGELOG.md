@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.0] - 2025-06-27
 
+### Added
+
+- Add support for `configuration.giantswarm.io/reconcile` label on generated config maps and secrets. When set to `disabled`, the resource
+  will not be regenerated on reconciliation loops of the `ManagementClusterConfiguration` CR. Other values or absence of the label will
+  normally reconcile and regenerate the resources on each run. Skipped resources will be marked on the `ManagementClusterConfiguration` CR
+  status under `.disabledReconciles` field.
+
 ## [0.5.1] - 2025-05-14
 
 ## [0.5.0] - 2025-04-30
