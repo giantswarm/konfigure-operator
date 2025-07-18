@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/deckarep/golang-set/v2 v2.7.0
-	github.com/giantswarm/konfigure v1.0.2-0.20250718101046-922ba6500c7b
+	github.com/giantswarm/konfigure v1.1.0
 	github.com/prometheus/client_golang v1.22.0
 	k8s.io/api v0.33.2
 	k8s.io/apimachinery v0.33.2
