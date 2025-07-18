@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-07-18
+
+### Changed
+
+- Bump `konfigure` to `v1.1.0`.
+  - Align usage of `fluxupdater` module.
+
+### Added
+
+- Add deprecation warning to the description of `.spec.sources.flux.service` of `ManagementClusterConfiguration` CRD.
+
 ## [0.6.0] - 2025-06-27
 
 ### Added
@@ -73,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial implementation according to: https://github.com/giantswarm/rfc/pull/108
 
-[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/giantswarm/konfigure-operator/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/giantswarm/konfigure-operator/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/giantswarm/konfigure-operator/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/giantswarm/konfigure-operator/compare/v0.4.0...v0.5.0
