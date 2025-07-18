@@ -158,6 +158,8 @@ spec:
                         - namespace
                         type: object
                       service:
+                        description: Service This field is deprecated and will be
+                          removed in the near future.
                         properties:
                           url:
                             type: string

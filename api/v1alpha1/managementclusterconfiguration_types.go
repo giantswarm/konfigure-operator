@@ -51,12 +51,15 @@ type Sources struct {
 }
 
 type FluxSource struct {
+	// +optional
+	// Service This field is deprecated and will be removed in the near future.
 	Service FluxSourceService `json:"service,omitempty"`
 	// +required
 	GitRepository FluxSourceGitRepository `json:"gitRepository"`
 }
 
 type FluxSourceService struct {
+	// +optional
 	Url string `json:"url,omitempty"`
 }
 
