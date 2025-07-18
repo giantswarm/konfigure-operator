@@ -336,13 +336,7 @@ func (r *ManagementClusterConfigurationReconciler) initializeFluxUpdater(fluxSou
 	// Konfigure cache
 	cacheDir := "/tmp/konfigure-cache"
 
-	// Default Flux installation source-controller URL
-	sourceControllerUrl := "source-controller.flux-system.svc"
-	if fluxSource.Service.Url != "" {
-		sourceControllerUrl = fluxSource.Service.Url
-	}
-
-	fluxUpdater, err := konfigure.InitializeFluxUpdater(cacheDir, sourceControllerUrl, fluxSource.GitRepository.Namespace, fluxSource.GitRepository.Name)
+	fluxUpdater, err := konfigure.InitializeFluxUpdater(cacheDir, fluxSource.GitRepository.Namespace, fluxSource.GitRepository.Name)
 
 	if err != nil {
 		return nil, err
