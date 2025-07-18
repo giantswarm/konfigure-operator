@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.0] - 2025-07-18
 
+### Changed
+
+- Bump `konfigure` to `v1.1.0`.
+  - Align usage of `fluxupdater` module.
+
+### Added
+
+- Add deprecation warning to the description of `.spec.sources.flux.service` of `ManagementClusterConfiguration` CRD.
+
 ## [0.6.0] - 2025-06-27
 
 ### Added
