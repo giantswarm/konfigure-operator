@@ -75,8 +75,6 @@ spec:
       gitRepository:
         name: "giantswarm-config"
         namespace: "flux-giantswarm"
-      service:
-        url: "source-controller.flux-giantswarm.svc"
 ```
 #### Breakdown and explanation
 
@@ -151,9 +149,6 @@ This section contains information on the source that should be used to generate 
 Currently on Flux GitRepository sources are supported that should point to assembled Giant Swarm config repositories.
 
 The `.flux.gitRepository` section should contain the `.name` and `.namespace` of the Flux GitRepository resource to fetch.
-
-The `.flux.service.url` field can point to any Flux `source-contoller` service URL. If not set, it is defaulted to the
-standard Flux deployment: `source-controller.flux.svc`.
 
 ###### Temporarily disabling reconciliation of generated config maps and secret
 
