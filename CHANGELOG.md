@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.8.0] - 2025-07-22
 
+### Removed
+
+- Remove `.spec.sources.flux.service` object from MCC
+
 ## [0.7.0] - 2025-07-18
 
 ### Changed
