@@ -192,9 +192,6 @@ def test_mcc_working(setup, kube_cluster: Cluster) -> None:
                     "gitRepository": {
                         "namespace": "default",
                         "name": "example-configs"
-                    },
-                    "service": {
-                        "url": "source-controller.default.svc"
                     }
                 }
             },
