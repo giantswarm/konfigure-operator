@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/deckarep/golang-set/v2 v2.7.0
-	github.com/giantswarm/konfigure v1.1.0
+	github.com/giantswarm/konfigure v1.1.1-0.20250718140750-f36b07d10171
 	github.com/prometheus/client_golang v1.22.0
 	k8s.io/api v0.33.2
 	k8s.io/apimachinery v0.33.2
@@ -75,6 +75,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
+	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
