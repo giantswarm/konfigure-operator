@@ -19,7 +19,7 @@ spec:
   destination:
     namespace: default
     naming:
-      suffix: laszlo
+      suffix: example-1
   reconciliation:
     interval: 1m
     retryInterval: 10s
