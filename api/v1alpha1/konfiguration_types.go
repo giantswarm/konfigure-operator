@@ -35,6 +35,9 @@ type KonfigurationSpec struct {
 
 	// Reconciliation
 	Reconciliation Reconciliation `json:"reconciliation,omitempty"`
+
+	// Sources
+	Sources Sources `json:"sources"`
 }
 
 type Targets struct {

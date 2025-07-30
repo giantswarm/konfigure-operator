@@ -75,6 +75,25 @@ spec:
                 required:
                 - interval
                 type: object
+              sources:
+                description: Sources
+                properties:
+                  flux:
+                    properties:
+                      gitRepository:
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
+                    required:
+                    - gitRepository
+                    type: object
+                type: object
               targets:
                 description: Targets
                 properties:
@@ -144,6 +163,7 @@ spec:
                 type: object
             required:
             - destination
+            - sources
             - targets
             type: object
           status:
