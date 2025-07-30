@@ -86,8 +86,60 @@ type NameValuePair struct {
 
 // KonfigurationStatus defines the observed state of Konfiguration.
 type KonfigurationStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// ObservedGeneration is the last observed generation.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// The last successfully applied revision.
+	// Equals the Revision of the applied artifact from the referenced source.
+	// +optional
+	LastAppliedRevision string `json:"lastAppliedRevision,omitempty"`
+
+	// The last revision that was attempted for reconciliation.
+	// Equals the Revision of the last attempted artifact from the referenced source.
+	// +optional
+	LastAttemptedRevision string `json:"lastAttemptedRevision,omitempty"`
+
+	// +optional
+	LastReconciledAt string `json:"lastReconciledAt,omitempty"`
+
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	Failures []IterationFailure `json:"failures,omitempty"`
+
+	DisabledIterations []DisabledIteration `json:"disabledIterations,omitempty"`
+}
+
+type IterationFailure struct {
+	// +kubebuilder:validation:Type=string
+	// +required
+	Name string `json:"appName"`
+
+	// +kubebuilder:validation:Type=string
+	// +required
+	Message string `json:"message"`
+}
+
+type DisabledIteration struct {
+	// +kubebuilder:validation:Type=string
+	// +required
+	Name string `json:"appName"`
+
+	// +kubebuilder:validation:Type=string
+	// +required
+	Kind string `json:"kind"`
+
+	// +required
+	Target DisabledIterationTarget `json:"target"`
+}
+
+type DisabledIterationTarget struct {
+	// +required
+	Name string `json:"name"`
+
+	// +required
+	Namespace string `json:"namespace"`
 }
 
 // +kubebuilder:object:root=true
