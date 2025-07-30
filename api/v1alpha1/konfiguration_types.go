@@ -67,6 +67,10 @@ type Defaults struct {
 }
 
 type Iteration struct {
+	// Name
+	// +required
+	Name string `json:"name"`
+
 	Variables []NameValuePair `json:"variables,omitempty"`
 }
 

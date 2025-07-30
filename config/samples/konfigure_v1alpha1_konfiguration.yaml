@@ -16,10 +16,12 @@ spec:
         - name: installation
           value: golem
     iterations:
-      - variables:
+      - name: app-operator
+        variables:
           - name: app
             value: app-operator
-      - variables:
+      - name: chart-operator
+        variables:
           - name: app
             value: chart-operator
   destination:
