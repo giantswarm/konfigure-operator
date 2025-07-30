@@ -6,4 +6,31 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: konfiguration-sample
 spec:
-  # TODO(user): Add fields here
+  targets:
+    schema:
+      reference:
+        name: management-clusters
+        namespace: giantswarm
+    defaults:
+      variables:
+        - name: installation
+          value: golem
+    iterations:
+      - variables:
+          - name: app
+            value: app-operator
+      - variables:
+          - name: app
+            value: chart-operator
+  destination:
+    namespace: default
+    naming:
+      suffix: laszlo
+  reconciliation:
+    interval: 1m
+    retryInterval: 10s
+  sources:
+    flux:
+      gitRepository:
+        name: "giantswarm-config"
+        namespace: "flux-giantswarm"

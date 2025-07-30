@@ -29,9 +29,6 @@ const (
 
 // ManagementClusterConfigurationSpec defines the desired state of ManagementClusterConfiguration.
 type ManagementClusterConfigurationSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Sources
 	Sources Sources `json:"sources"`
 

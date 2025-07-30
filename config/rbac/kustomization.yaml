@@ -37,4 +37,3 @@ resources:
 - konfiguration_admin_role.yaml
 - konfiguration_editor_role.yaml
 - konfiguration_viewer_role.yaml
-

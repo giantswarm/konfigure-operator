@@ -25,11 +25,7 @@ import (
 
 // KonfigurationSchemaSpec defines the desired state of KonfigurationSchema.
 type KonfigurationSchemaSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of KonfigurationSchema. Edit konfigurationschema_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Raw string `json:"raw,omitempty"`
 }
 
 // KonfigurationSchemaStatus defines the observed state of KonfigurationSchema.

@@ -39,10 +39,145 @@ spec:
           spec:
             description: KonfigurationSpec defines the desired state of Konfiguration.
             properties:
-              foo:
-                description: Foo is an example field of Konfiguration. Edit konfiguration_types.go
-                  to remove/update
-                type: string
+              configuration:
+                description: Configuration
+                properties:
+                  applications:
+                    properties:
+                      excludes:
+                        properties:
+                          exactMatchers:
+                            items:
+                              type: string
+                            type: array
+                          regexMatchers:
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                      includes:
+                        properties:
+                          exactMatchers:
+                            items:
+                              type: string
+                            type: array
+                          regexMatchers:
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                    type: object
+                  cluster:
+                    properties:
+                      name:
+                        type: string
+                    required:
+                    - name
+                    type: object
+                required:
+                - cluster
+                type: object
+              destination:
+                description: Destination
+                properties:
+                  namespace:
+                    type: string
+                  naming:
+                    properties:
+                      prefix:
+                        pattern: ^[a-z0-9]([-a-z0-9]{0,62}[a-z0-9])?$
+                        type: string
+                      suffix:
+                        pattern: ^[a-z0-9]([-a-z0-9]{0,62}[a-z0-9])?$
+                        type: string
+                      useSeparator:
+                        default: true
+                        type: boolean
+                    type: object
+                required:
+                - namespace
+                - naming
+                type: object
+              reconciliation:
+                description: Reconciliation
+                properties:
+                  interval:
+                    pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
+                    type: string
+                  retryInterval:
+                    pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
+                    type: string
+                  suspend:
+                    default: false
+                    type: boolean
+                required:
+                - interval
+                type: object
+              targets:
+                description: Targets
+                properties:
+                  defaults:
+                    properties:
+                      variables:
+                        items:
+                          properties:
+                            name:
+                              description: Name
+                              type: string
+                            value:
+                              description: Value
+                              type: string
+                          required:
+                          - name
+                          - value
+                          type: object
+                        type: array
+                    type: object
+                  iterations:
+                    items:
+                      properties:
+                        variables:
+                          items:
+                            properties:
+                              name:
+                                description: Name
+                                type: string
+                              value:
+                                description: Value
+                                type: string
+                            required:
+                            - name
+                            - value
+                            type: object
+                          type: array
+                      type: object
+                    type: array
+                  schema:
+                    description: Schema
+                    properties:
+                      reference:
+                        description: Reference
+                        properties:
+                          name:
+                            description: Name
+                            type: string
+                          namespace:
+                            description: Namespace
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
+                    required:
+                    - reference
+                    type: object
+                required:
+                - defaults
+                - schema
+                type: object
+            required:
+            - destination
+            - targets
             type: object
           status:
             description: KonfigurationStatus defines the observed state of Konfiguration.

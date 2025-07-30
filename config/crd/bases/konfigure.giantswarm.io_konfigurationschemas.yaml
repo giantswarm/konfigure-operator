@@ -40,9 +40,7 @@ spec:
           spec:
             description: KonfigurationSchemaSpec defines the desired state of KonfigurationSchema.
             properties:
-              foo:
-                description: Foo is an example field of KonfigurationSchema. Edit
-                  konfigurationschema_types.go to remove/update
+              raw:
                 type: string
             type: object
           status:

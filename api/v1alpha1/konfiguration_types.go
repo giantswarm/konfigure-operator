@@ -25,11 +25,59 @@ import (
 
 // KonfigurationSpec defines the desired state of Konfiguration.
 type KonfigurationSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Targets
+	// +required
+	Targets Targets `json:"targets"`
 
-	// Foo is an example field of Konfiguration. Edit konfiguration_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Destination
+	// +required
+	Destination Destination `json:"destination"`
+
+	// Configuration
+	Configuration Configuration `json:"configuration,omitempty"`
+
+	// Reconciliation
+	Reconciliation Reconciliation `json:"reconciliation,omitempty"`
+}
+
+type Targets struct {
+	// Schema
+	// +required
+	Schema Schema `json:"schema"`
+
+	Defaults   Defaults    `json:"defaults"`
+	Iterations []Iteration `json:"iterations,omitempty"`
+}
+
+type Schema struct {
+	// Reference
+	Reference SchemaReference `json:"reference"`
+}
+
+type SchemaReference struct {
+	// Name
+	Name string `json:"name"`
+
+	// Namespace
+	Namespace string `json:"namespace"`
+}
+
+type Defaults struct {
+	Variables []NameValuePair `json:"variables,omitempty"`
+}
+
+type Iteration struct {
+	Variables []NameValuePair `json:"variables,omitempty"`
+}
+
+type NameValuePair struct {
+	// Name
+	// +required
+	Name string `json:"name"`
+
+	// Value
+	// +required
+	Value string `json:"value"`
 }
 
 // KonfigurationStatus defines the observed state of Konfiguration.
