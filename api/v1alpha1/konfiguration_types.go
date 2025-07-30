@@ -33,9 +33,6 @@ type KonfigurationSpec struct {
 	// +required
 	Destination Destination `json:"destination"`
 
-	// Configuration
-	Configuration Configuration `json:"configuration,omitempty"`
-
 	// Reconciliation
 	Reconciliation Reconciliation `json:"reconciliation,omitempty"`
 }

@@ -39,44 +39,6 @@ spec:
           spec:
             description: KonfigurationSpec defines the desired state of Konfiguration.
             properties:
-              configuration:
-                description: Configuration
-                properties:
-                  applications:
-                    properties:
-                      excludes:
-                        properties:
-                          exactMatchers:
-                            items:
-                              type: string
-                            type: array
-                          regexMatchers:
-                            items:
-                              type: string
-                            type: array
-                        type: object
-                      includes:
-                        properties:
-                          exactMatchers:
-                            items:
-                              type: string
-                            type: array
-                          regexMatchers:
-                            items:
-                              type: string
-                            type: array
-                        type: object
-                    type: object
-                  cluster:
-                    properties:
-                      name:
-                        type: string
-                    required:
-                    - name
-                    type: object
-                required:
-                - cluster
-                type: object
               destination:
                 description: Destination
                 properties:

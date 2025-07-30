@@ -431,7 +431,6 @@ func (in *KonfigurationSpec) DeepCopyInto(out *KonfigurationSpec) {
 	*out = *in
 	in.Targets.DeepCopyInto(&out.Targets)
 	out.Destination = in.Destination
-	in.Configuration.DeepCopyInto(&out.Configuration)
 	in.Reconciliation.DeepCopyInto(&out.Reconciliation)
 }
 
