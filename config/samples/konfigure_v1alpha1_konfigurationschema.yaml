@@ -1,0 +1,9 @@
+apiVersion: konfigure.giantswarm.io/v1alpha1
+kind: KonfigurationSchema
+metadata:
+  labels:
+    app.kubernetes.io/name: konfigure-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: konfigurationschema-sample
+spec:
+  # TODO(user): Add fields here

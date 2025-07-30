@@ -4,6 +4,7 @@
 resources:
 - bases/konfigure.giantswarm.io_managementclusterconfigurations.yaml
 - bases/konfigure.giantswarm.io_konfigurations.yaml
+- bases/konfigure.giantswarm.io_konfigurationschemas.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
