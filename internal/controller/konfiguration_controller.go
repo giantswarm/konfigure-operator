@@ -24,8 +24,12 @@ import (
 	"strings"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/giantswarm/konfigure-operator/internal/konfigure"
+
 	konfigureModel "github.com/giantswarm/konfigure/pkg/model"
-	konfigure "github.com/giantswarm/konfigure/pkg/service"
+	konfigureService "github.com/giantswarm/konfigure/pkg/service"
 
 	apiMachineryErrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -146,7 +150,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	logger.Info("Konfigure cache successfully updated!")
 
 	// Initialize Dynamic Service
-	service := konfigure.NewDynamicService(konfigure.DynamicServiceConfig{
+	service := konfigureService.NewDynamicService(konfigureService.DynamicServiceConfig{
 		Log: logger,
 	})
 
@@ -173,8 +177,17 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	logger.Info(fmt.Sprintf("Konfiguration schema file path: %s", schemaFilePath))
 
+	revision, err := konfigure.GetLastArchiveSHA(fluxUpdater.CacheDir)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to get last archive SHA from: %s", fluxUpdater.CacheDir))
+		revision = "unknown"
+	}
+
+	ownershipLabels := logic.GenerateOwnershipLabels(cr.GroupVersionKind(), cr.ObjectMeta, revision)
+
 	// Render targets
 	failures := make(map[string]string)
+	var disabledIterations []konfigurev1alpha1.DisabledIteration
 	for _, iteration := range cr.Spec.Targets.Iterations {
 		variables := make(map[string]string)
 
@@ -191,7 +204,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			rawVariables = append(rawVariables, fmt.Sprintf("%s=%s", k, v))
 		}
 
-		cm, secret, err := service.Render(konfigure.RenderInput{
+		configmap, secret, err := service.Render(konfigureService.RenderInput{
 			Dir:              path.Join(fluxUpdater.CacheDir, "latest"),
 			Schema:           schemaFilePath,
 			Variables:        rawVariables,
@@ -199,6 +212,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			Namespace:        cr.Spec.Destination.Namespace,
 			ConfigMapDataKey: konfigureModel.DefaultConfigMapDataKey,
 			SecretDataKey:    konfigureModel.DefaultSecretDataKey,
+			ExtraLabels:      ownershipLabels,
 		})
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Failed to render iteration: %s with variables: %s", iteration.Name, strings.Join(rawVariables, ",")))
@@ -209,9 +223,125 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Succesfully rendered config map for %s iteration: %s", iteration.Name, cm))
-		logger.Info(fmt.Sprintf("Succesfully rendered secret for %s iteration: %s", iteration.Name, secret))
+		logger.Info(fmt.Sprintf("Successfully rendered iteration: %s", iteration.Name))
+
+		// Pre-flight check config map apply
+		if err = r.canApplyConfigMap(ctx, configmap); err != nil {
+			failures[iteration.Name] = err.Error()
+		}
+
+		// Pre-flight check secret apply. Present both errors to avoid the need to fix in multiple turns.
+		if err = r.canApplySecret(ctx, secret); err != nil {
+			if failures[iteration.Name] != "" {
+				failures[iteration.Name] = failures[iteration.Name] + " " + err.Error()
+			} else {
+				failures[iteration.Name] = err.Error()
+			}
+		}
+
+		if failures[iteration.Name] != "" {
+			continue
+		}
+
+		shouldReconcile, err := r.applyConfigMap(ctx, configmap)
+		if !shouldReconcile {
+			logger.Info(fmt.Sprintf("Skipping apply for configmap %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
+
+			disabledIterations = append(disabledIterations, konfigurev1alpha1.DisabledIteration{
+				Name: iteration.Name,
+				Kind: "ConfigMap",
+				Target: konfigurev1alpha1.DisabledIterationTarget{
+					Name:      secret.Name,
+					Namespace: secret.Namespace,
+				},
+			})
+		}
+
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to apply configmap %s/%s for app: %s", configmap.Namespace, configmap.Name, iteration.Name))
+
+			failures[iteration.Name] = err.Error()
+			continue
+		}
+
+		shouldReconcile, err = r.applySecret(ctx, secret)
+		if !shouldReconcile {
+			logger.Info(fmt.Sprintf("Skipping apply for secret %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
+
+			disabledIterations = append(disabledIterations, konfigurev1alpha1.DisabledIteration{
+				Name: iteration.Name,
+				Kind: "Secret",
+				Target: konfigurev1alpha1.DisabledIterationTarget{
+					Name:      secret.Name,
+					Namespace: secret.Namespace,
+				},
+			})
+		}
+
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to apply secret %s/%s for app: %s", secret.Namespace, secret.Name, iteration.Name))
+
+			failures[iteration.Name] = err.Error()
+			continue
+		}
+
+		logger.Info(fmt.Sprintf("Successfully reconciled rendered configmap and secret for: %s", iteration.Name))
 	}
+
+	logger.Info(fmt.Sprintf("Failures: %s", failures))
+
+	cr.Status.Failures = []konfigurev1alpha1.IterationFailure{}
+	for failedIteration, failureMessage := range failures {
+		cr.Status.Failures = append(cr.Status.Failures, konfigurev1alpha1.IterationFailure{
+			Name:    failedIteration,
+			Message: failureMessage,
+		})
+	}
+
+	// Status update for disabled reconciliations
+	cr.Status.DisabledIterations = disabledIterations
+
+	cr.Status.ObservedGeneration = cr.Generation
+	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
+
+	cr.Status.LastAttemptedRevision = revision
+
+	cr.Status.Conditions = []metav1.Condition{}
+	if len(failures) == 0 {
+		cr.Status.LastAppliedRevision = revision
+
+		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
+			Type:               logic.ReadyCondition,
+			Status:             metav1.ConditionTrue,
+			ObservedGeneration: cr.Generation,
+			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
+			Reason:             logic.ReconciliationSucceededReason,
+			Message:            fmt.Sprintf("Applied revision: %s", revision),
+		})
+	} else {
+		cr.Status.Conditions = append(cr.Status.Conditions, metav1.Condition{
+			Type:               logic.ReadyCondition,
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: cr.Generation,
+			LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
+			Reason:             logic.ReconciliationFailedReason,
+			Message:            fmt.Sprintf("Attempted revision: %s", revision),
+		})
+	}
+
+	err = r.Status().Update(ctx, cr)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Failed to update status for: %s/%s", cr.GetNamespace(), cr.GetName()))
+		return ctrl.Result{}, err
+	}
+
+	if len(failures) > 0 {
+		logger.Info(fmt.Sprintf("Reconciliation finished in %s with %d failures, next run in %s", time.Since(reconcileStart).String(), len(failures), cr.Spec.Reconciliation.RetryInterval.Duration.String()))
+
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, nil
+	}
+
+	logger.Info(fmt.Sprintf("Reconciliation finished in %s, next run in %s", time.Since(reconcileStart).String(), cr.Spec.Reconciliation.Interval.Duration.String()))
 
 	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil
 }
@@ -256,6 +386,137 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchema(ctx context.Context, 
 	}
 
 	return file.Name(), err
+}
+
+func (r *KonfigurationReconciler) canApplyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
+	existingObject := &v1.ConfigMap{}
+
+	err := r.Get(ctx, client.ObjectKeyFromObject(configmap), existingObject)
+	if err != nil {
+		if apiMachineryErrors.IsNotFound(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	if err = logic.MatchOwnership(existingObject.ObjectMeta, configmap.ObjectMeta); err != nil {
+		return fmt.Errorf("desired configmap exists already and is owned by another object: %s", err.Error())
+	}
+
+	return nil
+}
+
+func (r *KonfigurationReconciler) applyConfigMap(ctx context.Context, generatedConfigMap *v1.ConfigMap) (bool, error) {
+	existingObject := &v1.ConfigMap{}
+
+	err := r.Get(ctx, client.ObjectKeyFromObject(generatedConfigMap), existingObject)
+	if err != nil && !apiMachineryErrors.IsNotFound(err) {
+		return true, err
+	}
+
+	if !logic.ShouldReconcile(existingObject.ObjectMeta) {
+		return false, nil
+	}
+
+	// Respect external annotations and labels.
+	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
+	externalAnnotations := logic.FilterExternalFromMap(existingObject.Annotations)
+	externalLabels := logic.FilterExternalFromMap(existingObject.Labels)
+
+	desiredConfigMap := v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        generatedConfigMap.Name,
+			Namespace:   generatedConfigMap.Namespace,
+			Annotations: externalAnnotations,
+			Labels:      externalLabels,
+		},
+	}
+
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredConfigMap, func() error {
+		// Enforce desired annotations
+		for key, value := range generatedConfigMap.Annotations {
+			desiredConfigMap.Annotations[key] = value
+		}
+
+		// Enforce desired labels
+		for key, value := range generatedConfigMap.Labels {
+			desiredConfigMap.Labels[key] = value
+		}
+
+		// Always enforce data
+		desiredConfigMap.Data = generatedConfigMap.Data
+
+		return nil
+	})
+
+	return true, err
+}
+
+func (r *KonfigurationReconciler) canApplySecret(ctx context.Context, generatedSecret *v1.Secret) error {
+	existingObject := &v1.Secret{}
+
+	err := r.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
+	if err != nil {
+		if apiMachineryErrors.IsNotFound(err) {
+			return nil
+		}
+
+		return err
+	}
+
+	if err = logic.MatchOwnership(existingObject.ObjectMeta, generatedSecret.ObjectMeta); err != nil {
+		return fmt.Errorf("desired secret exists already and is owned by another object: %s", err.Error())
+	}
+
+	return nil
+}
+
+func (r *KonfigurationReconciler) applySecret(ctx context.Context, generatedSecret *v1.Secret) (bool, error) {
+	existingObject := &v1.Secret{}
+
+	err := r.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
+	if err != nil && !apiMachineryErrors.IsNotFound(err) {
+		return true, err
+	}
+
+	if !logic.ShouldReconcile(existingObject.ObjectMeta) {
+		return false, nil
+	}
+
+	// Respect external annotations and labels.
+	// Do it this way to avoid keeping a removed or renamed konfigure-operator annotation or label being kept forever.
+	externalAnnotations := logic.FilterExternalFromMap(existingObject.Annotations)
+	externalLabels := logic.FilterExternalFromMap(existingObject.Labels)
+
+	desiredSecret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        generatedSecret.Name,
+			Namespace:   generatedSecret.Namespace,
+			Annotations: externalAnnotations,
+			Labels:      externalLabels,
+		},
+	}
+
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, &desiredSecret, func() error {
+		// Enforce desired annotations
+		for key, value := range generatedSecret.Annotations {
+			desiredSecret.Annotations[key] = value
+		}
+
+		// Enforce desired labels
+		for key, value := range generatedSecret.Labels {
+			desiredSecret.Labels[key] = value
+		}
+
+		// Always enforce data
+		desiredSecret.Data = generatedSecret.Data
+		desiredSecret.StringData = generatedSecret.StringData
+
+		return nil
+	})
+
+	return true, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

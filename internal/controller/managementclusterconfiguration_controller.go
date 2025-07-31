@@ -169,7 +169,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		revision = "unknown"
 	}
 
-	ownershipLabels := logic.GenerateOwnershipLabels(cr, revision)
+	ownershipLabels := logic.GenerateOwnershipLabels(cr.GroupVersionKind(), cr.ObjectMeta, revision)
 
 	failures := make(map[string]string)
 	var disabledReconciles []konfigurev1alpha1.DisabledReconcile
@@ -263,7 +263,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		})
 	}
 
-	// Status update for disabled reconciles
+	// Status update for disabled reconciliations
 	cr.Status.DisabledReconciles = disabledReconciles
 
 	// Status update for missed matchers
