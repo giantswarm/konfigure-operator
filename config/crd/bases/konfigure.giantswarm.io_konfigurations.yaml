@@ -16,7 +16,35 @@ spec:
     singular: konfiguration
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.destination.namespace
+      name: Destination
+      type: string
+    - jsonPath: .spec.destination.naming.prefix
+      name: Prefix
+      type: string
+    - jsonPath: .spec.destination.naming.suffix
+      name: Suffix
+      type: string
+    - jsonPath: .spec.destination.naming.useSeparator
+      name: UseSeparator
+      type: boolean
+    - jsonPath: .spec.targets.schema.reference.name
+      name: SchemaName
+      type: string
+    - jsonPath: .spec.targets.schema.reference.namespace
+      name: SchemaNamespace
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Status
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Konfiguration is the Schema for the konfigurations API.

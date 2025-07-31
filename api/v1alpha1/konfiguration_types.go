@@ -147,6 +147,15 @@ type DisabledIterationTarget struct {
 // +kubebuilder:resource:shortName=kfg
 
 // Konfiguration is the Schema for the konfigurations API.
+// +kubebuilder:printcolumn:name="Destination",type="string",JSONPath=".spec.destination.namespace",description=""
+// +kubebuilder:printcolumn:name="Prefix",type="string",JSONPath=".spec.destination.naming.prefix",description=""
+// +kubebuilder:printcolumn:name="Suffix",type="string",JSONPath=".spec.destination.naming.suffix",description=""
+// +kubebuilder:printcolumn:name="UseSeparator",type="boolean",JSONPath=".spec.destination.naming.useSeparator",description=""
+// +kubebuilder:printcolumn:name="SchemaName",type="string",JSONPath=".spec.targets.schema.reference.name",description=""
+// +kubebuilder:printcolumn:name="SchemaNamespace",type="string",JSONPath=".spec.targets.schema.reference.namespace",description=""
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description=""
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
 type Konfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
