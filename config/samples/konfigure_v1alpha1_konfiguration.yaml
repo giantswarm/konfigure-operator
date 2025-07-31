@@ -9,8 +9,8 @@ spec:
   targets:
     schema:
       reference:
-        name: management-clusters
-        namespace: giantswarm
+        name: konfigurationschema-sample
+        namespace: konfigure-operator-system
     defaults:
       variables:
         - name: installation

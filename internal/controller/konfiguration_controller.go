@@ -19,7 +19,10 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
+
+	apiMachineryErrors "k8s.io/apimachinery/pkg/api/errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -136,7 +139,30 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	logger.Info("Konfigure cache successfully updated!")
 
-	return ctrl.Result{}, nil
+	// Fetch konfiguration schema
+	schemaFilePath, err := r.fetchKonfigurationSchema(ctx, cr.Spec.Targets.Schema)
+
+	defer func(name string) {
+		if schemaFilePath == "" {
+			return
+		}
+
+		err := os.Remove(name)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to remove temporary schema file: %s", schemaFilePath))
+		}
+	}(schemaFilePath)
+
+	if err != nil {
+		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
+			logger.Error(updateStatusErr, "Failed to update status on setup failure")
+		}
+
+		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
+	}
+	logger.Info(fmt.Sprintf("Konfiguration schema file path: %s", schemaFilePath))
+
+	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil
 }
 
 func (r *KonfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.Konfiguration, err error) error {
@@ -157,8 +183,37 @@ func (r *KonfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context
 	return r.Status().Update(ctx, cr)
 }
 
+const (
+	KonfigurationSchemaDir = "/tmp/konfiguration-schemas"
+)
+
+func (r *KonfigurationReconciler) fetchKonfigurationSchema(ctx context.Context, spec konfigurev1alpha1.Schema) (string, error) {
+	schema := &konfigurev1alpha1.KonfigurationSchema{}
+	err := r.Get(ctx, client.ObjectKey{Name: spec.Reference.Name, Namespace: spec.Reference.Namespace}, schema)
+	if apiMachineryErrors.IsNotFound(err) {
+		return "", fmt.Errorf("KonfigurationSchema %s/%s not found", spec.Reference.Namespace, spec.Reference.Name)
+	}
+
+	file, err := os.CreateTemp(KonfigurationSchemaDir, fmt.Sprintf("%s-%s", spec.Reference.Namespace, spec.Reference.Name))
+	if err != nil {
+		return "", err
+	}
+
+	_, err = file.WriteString(schema.Spec.Raw)
+	if err != nil {
+		return "", err
+	}
+
+	return file.Name(), err
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *KonfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	err := os.MkdirAll(KonfigurationSchemaDir, 0700)
+	if err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&konfigurev1alpha1.Konfiguration{}, builder.WithPredicates(
 			predicate.GenerationChangedPredicate{},
