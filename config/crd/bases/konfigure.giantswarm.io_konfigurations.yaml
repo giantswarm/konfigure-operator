@@ -11,6 +11,8 @@ spec:
     kind: Konfiguration
     listKind: KonfigurationList
     plural: konfigurations
+    shortNames:
+    - kfg
     singular: konfiguration
   scope: Namespaced
   versions:

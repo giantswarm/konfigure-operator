@@ -144,6 +144,7 @@ type DisabledIterationTarget struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=kfg
 
 // Konfiguration is the Schema for the konfigurations API.
 type Konfiguration struct {

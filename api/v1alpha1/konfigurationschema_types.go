@@ -36,6 +36,7 @@ type KonfigurationSchemaStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=kfgs
 
 // KonfigurationSchema is the Schema for the konfigurationschemas API.
 type KonfigurationSchema struct {

@@ -11,6 +11,8 @@ spec:
     kind: KonfigurationSchema
     listKind: KonfigurationSchemaList
     plural: konfigurationschemas
+    shortNames:
+    - kfgs
     singular: konfigurationschema
   scope: Namespaced
   versions:
