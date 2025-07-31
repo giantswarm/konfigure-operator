@@ -66,6 +66,25 @@ type Destination struct {
 	Naming NamingOptions `json:"naming"`
 }
 
+func (n *NamingOptions) Render(core string) string {
+	name := core
+
+	separator := ""
+	if n.UseSeparator {
+		separator = "-"
+	}
+
+	if n.Prefix != "" {
+		name = n.Prefix + separator + name
+	}
+
+	if n.Suffix != "" {
+		name = name + separator + n.Suffix
+	}
+
+	return name
+}
+
 type NamingOptions struct {
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]{0,62}[a-z0-9])?$"

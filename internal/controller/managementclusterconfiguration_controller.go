@@ -348,20 +348,7 @@ func (r *ManagementClusterConfigurationReconciler) updateStatusOnSetupFailure(ct
 }
 
 func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, revision string, destination konfigurev1alpha1.Destination, ownershipLabels map[string]string) (*v1.ConfigMap, *v1.Secret, error) {
-	name := app
-
-	separator := ""
-	if destination.Naming.UseSeparator {
-		separator = "-"
-	}
-
-	if destination.Naming.Prefix != "" {
-		name = destination.Naming.Prefix + separator + name
-	}
-
-	if destination.Naming.Suffix != "" {
-		name = name + separator + destination.Naming.Suffix
-	}
+	name := destination.Naming.Render(app)
 
 	return service.Generate(ctx, konfigureService.GenerateInput{
 		App:         app,

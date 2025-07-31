@@ -20,7 +20,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
+	"strings"
 	"time"
+
+	konfigureModel "github.com/giantswarm/konfigure/pkg/model"
+	konfigure "github.com/giantswarm/konfigure/pkg/service"
 
 	apiMachineryErrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -118,7 +123,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// Initialize Konfigure
+	// Initialize SOPS Environment
 	sops, err := InitializeSopsEnv(ctx, "/sopsenv/kfg")
 	if err != nil {
 		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
@@ -129,7 +134,8 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
 
-	_, err = InitializeFluxUpdater("/tmp/konfigure-cache/kfg", cr.Spec.Sources.Flux)
+	// Initialize Flux Updater
+	fluxUpdater, err := InitializeFluxUpdater("/tmp/konfigure-cache/kfg", cr.Spec.Sources.Flux)
 	if err != nil {
 		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
@@ -138,6 +144,11 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
 	}
 	logger.Info("Konfigure cache successfully updated!")
+
+	// Initialize Dynamic Service
+	service := konfigure.NewDynamicService(konfigure.DynamicServiceConfig{
+		Log: logger,
+	})
 
 	// Fetch konfiguration schema
 	schemaFilePath, err := r.fetchKonfigurationSchema(ctx, cr.Spec.Targets.Schema)
@@ -161,6 +172,46 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
 	}
 	logger.Info(fmt.Sprintf("Konfiguration schema file path: %s", schemaFilePath))
+
+	// Render targets
+	failures := make(map[string]string)
+	for _, iteration := range cr.Spec.Targets.Iterations {
+		variables := make(map[string]string)
+
+		for _, defaultVariable := range cr.Spec.Targets.Defaults.Variables {
+			variables[defaultVariable.Name] = defaultVariable.Value
+		}
+
+		for _, valueOverride := range iteration.Variables {
+			variables[valueOverride.Name] = valueOverride.Value
+		}
+
+		var rawVariables []string
+		for k, v := range variables {
+			rawVariables = append(rawVariables, fmt.Sprintf("%s=%s", k, v))
+		}
+
+		cm, secret, err := service.Render(konfigure.RenderInput{
+			Dir:              path.Join(fluxUpdater.CacheDir, "latest"),
+			Schema:           schemaFilePath,
+			Variables:        rawVariables,
+			Name:             cr.Spec.Destination.Naming.Render(iteration.Name),
+			Namespace:        cr.Spec.Destination.Namespace,
+			ConfigMapDataKey: konfigureModel.DefaultConfigMapDataKey,
+			SecretDataKey:    konfigureModel.DefaultSecretDataKey,
+		})
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to render iteration: %s with variables: %s", iteration.Name, strings.Join(rawVariables, ",")))
+
+			failures[iteration.Name] = err.Error()
+
+			// TODO Record metric for generation
+			continue
+		}
+
+		logger.Info(fmt.Sprintf("Succesfully rendered config map for %s iteration: %s", iteration.Name, cm))
+		logger.Info(fmt.Sprintf("Succesfully rendered secret for %s iteration: %s", iteration.Name, secret))
+	}
 
 	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil
 }
