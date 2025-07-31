@@ -22,8 +22,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/giantswarm/konfigure/pkg/fluxupdater"
-	"github.com/giantswarm/konfigure/pkg/sopsenv"
 	v1 "k8s.io/api/core/v1"
 	apiMachineryErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,13 +74,13 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
 
 	defer func() {
-		RecordReconcileDuration(cr, reconcileStart)
+		RecordReconcileDuration(cr.GroupVersionKind(), cr.ObjectMeta, reconcileStart)
 
 		for _, condition := range cr.Status.Conditions {
 			logger.Info(fmt.Sprintf("Finished Reconciling ManagementClusterConfiguration: %s/%s with status: %s/%s :: %s", cr.GetNamespace(), cr.GetName(), condition.Type, condition.Status, condition.Reason))
 		}
 
-		RecordConditions(cr)
+		RecordConditions(cr.GroupVersionKind(), cr.ObjectMeta, cr.Status.Conditions)
 	}()
 
 	// Handle finalizer
@@ -124,7 +122,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	}
 
 	// Initialize Konfigure
-	sops, err := r.initializeSopsEnv(ctx)
+	sops, err := InitializeSopsEnv(ctx, "/sopsenv/mcc")
 	if err != nil {
 		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
@@ -134,7 +132,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	}
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
 
-	fluxUpdater, err := r.initializeFluxUpdater(cr.Spec.Sources.Flux)
+	fluxUpdater, err := InitializeFluxUpdater("/tmp/konfigure-cache/mcc", cr.Spec.Sources.Flux)
 	if err != nil {
 		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
@@ -314,41 +312,6 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	logger.Info(fmt.Sprintf("Reconciliation finished in %s, next run in %s", time.Since(reconcileStart).String(), cr.Spec.Reconciliation.Interval.Duration.String()))
 
 	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil
-}
-
-func (r *ManagementClusterConfigurationReconciler) initializeSopsEnv(ctx context.Context) (*sopsenv.SOPSEnv, error) {
-	sopsKeysDir := "/sopsenv"
-	sopsEnv, err := konfigure.InitializeSopsEnvFromKubernetes(ctx, sopsKeysDir)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = sopsEnv.Setup(ctx)
-	if err != nil {
-		return sopsEnv, err
-	}
-
-	return sopsEnv, nil
-}
-
-func (r *ManagementClusterConfigurationReconciler) initializeFluxUpdater(fluxSource konfigurev1alpha1.FluxSource) (*fluxupdater.FluxUpdater, error) {
-	// Konfigure cache
-	cacheDir := "/tmp/konfigure-cache"
-
-	fluxUpdater, err := konfigure.InitializeFluxUpdater(cacheDir, fluxSource.GitRepository.Namespace, fluxSource.GitRepository.Name)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = fluxUpdater.UpdateConfig()
-
-	if err != nil {
-		return fluxUpdater, err
-	}
-
-	return fluxUpdater, nil
 }
 
 func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx context.Context, sopsKeysDir, cacheDir, installation string) (*konfigureService.Service, error) {

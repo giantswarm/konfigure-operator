@@ -3,6 +3,8 @@ package controller
 import (
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/prometheus/client_golang/prometheus"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -38,9 +40,9 @@ var (
 	)
 )
 
-func RecordConditions(obj *konfigurev1alpha1.ManagementClusterConfiguration) {
-	for _, condition := range obj.Status.Conditions {
-		RecordCondition(obj.Kind, obj.ObjectMeta, condition)
+func RecordConditions(gvk schema.GroupVersionKind, meta v1.ObjectMeta, conditions []v1.Condition) {
+	for _, condition := range conditions {
+		RecordCondition(gvk.Kind, meta, condition)
 	}
 }
 
@@ -64,8 +66,8 @@ func RecordGeneration(obj *konfigurev1alpha1.ManagementClusterConfiguration, app
 	generationGauge.WithLabelValues(obj.Kind, obj.Name, obj.Namespace, app, obj.Spec.Configuration.Cluster.Name, obj.Spec.Destination.Namespace).Set(value)
 }
 
-func RecordReconcileDuration(obj *konfigurev1alpha1.ManagementClusterConfiguration, start time.Time) {
-	reconcileDurationHistogram.WithLabelValues(obj.Kind, obj.Name, obj.Namespace).Observe(time.Since(start).Seconds())
+func RecordReconcileDuration(gvk schema.GroupVersionKind, meta v1.ObjectMeta, start time.Time) {
+	reconcileDurationHistogram.WithLabelValues(gvk.Kind, meta.Name, meta.Namespace).Observe(time.Since(start).Seconds())
 }
 
 func init() {
