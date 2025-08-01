@@ -45,8 +45,8 @@ type Targets struct {
 	// +required
 	Schema Schema `json:"schema"`
 
-	Defaults   Defaults    `json:"defaults"`
-	Iterations []Iteration `json:"iterations,omitempty"`
+	Defaults   Defaults             `json:"defaults"`
+	Iterations map[string]Iteration `json:"iterations,omitempty"`
 }
 
 type Schema struct {
@@ -67,10 +67,6 @@ type Defaults struct {
 }
 
 type Iteration struct {
-	// Name
-	// +required
-	Name string `json:"name"`
-
 	Variables []NameValuePair `json:"variables,omitempty"`
 }
 
@@ -106,12 +102,12 @@ type KonfigurationStatus struct {
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	Failures []IterationFailure `json:"failures,omitempty"`
+	Failed []FailedIteration `json:"failed,omitempty"`
 
-	DisabledIterations []DisabledIteration `json:"disabledIterations,omitempty"`
+	Disabled []DisabledIteration `json:"disabled,omitempty"`
 }
 
-type IterationFailure struct {
+type FailedIteration struct {
 	// +kubebuilder:validation:Type=string
 	// +required
 	Name string `json:"appName"`

@@ -16,14 +16,18 @@ spec:
         - name: installation
           value: golem
     iterations:
-      - name: app-operator
+      app-operator:
         variables:
           - name: app
             value: app-operator
-      - name: chart-operator
+      chart-operator:
         variables:
           - name: app
             value: chart-operator
+      dex-operator:
+        variables:
+          - name: app
+            value: dex-operator
   destination:
     namespace: default
     naming:

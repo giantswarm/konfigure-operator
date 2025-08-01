@@ -145,11 +145,8 @@ spec:
                         type: array
                     type: object
                   iterations:
-                    items:
+                    additionalProperties:
                       properties:
-                        name:
-                          description: Name
-                          type: string
                         variables:
                           items:
                             properties:
@@ -164,10 +161,8 @@ spec:
                             - value
                             type: object
                           type: array
-                      required:
-                      - name
                       type: object
-                    type: array
+                    type: object
                   schema:
                     description: Schema
                     properties:
@@ -255,7 +250,7 @@ spec:
                   - type
                   type: object
                 type: array
-              disabledIterations:
+              disabled:
                 items:
                   properties:
                     appName:
@@ -278,7 +273,7 @@ spec:
                   - target
                   type: object
                 type: array
-              failures:
+              failed:
                 items:
                   properties:
                     appName:

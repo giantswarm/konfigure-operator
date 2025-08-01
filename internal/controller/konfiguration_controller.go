@@ -19,8 +19,10 @@ package controller
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -186,9 +188,14 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	ownershipLabels := logic.GenerateOwnershipLabels(cr.GroupVersionKind(), cr.ObjectMeta, revision)
 
 	// Render targets
+	iterationNames := slices.Collect(maps.Keys(cr.Spec.Targets.Iterations))
+	slices.Sort(iterationNames)
+
 	failures := make(map[string]string)
 	var disabledIterations []konfigurev1alpha1.DisabledIteration
-	for _, iteration := range cr.Spec.Targets.Iterations {
+	for _, iterationName := range iterationNames {
+		iteration := cr.Spec.Targets.Iterations[iterationName]
+
 		variables := make(map[string]string)
 
 		for _, defaultVariable := range cr.Spec.Targets.Defaults.Variables {
@@ -208,38 +215,38 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			Dir:              path.Join(fluxUpdater.CacheDir, "latest"),
 			Schema:           schemaFilePath,
 			Variables:        rawVariables,
-			Name:             cr.Spec.Destination.Naming.Render(iteration.Name),
+			Name:             cr.Spec.Destination.Naming.Render(iterationName),
 			Namespace:        cr.Spec.Destination.Namespace,
 			ConfigMapDataKey: konfigureModel.DefaultConfigMapDataKey,
 			SecretDataKey:    konfigureModel.DefaultSecretDataKey,
 			ExtraLabels:      ownershipLabels,
 		})
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Failed to render iteration: %s with variables: %s", iteration.Name, strings.Join(rawVariables, ",")))
+			logger.Error(err, fmt.Sprintf("Failed to render iteration: %s with variables: %s", iterationName, strings.Join(rawVariables, ",")))
 
-			failures[iteration.Name] = err.Error()
+			failures[iterationName] = err.Error()
 
 			// TODO Record metric for generation
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Successfully rendered iteration: %s", iteration.Name))
+		logger.Info(fmt.Sprintf("Successfully rendered iteration: %s", iterationName))
 
 		// Pre-flight check config map apply
 		if err = r.canApplyConfigMap(ctx, configmap); err != nil {
-			failures[iteration.Name] = err.Error()
+			failures[iterationName] = err.Error()
 		}
 
 		// Pre-flight check secret apply. Present both errors to avoid the need to fix in multiple turns.
 		if err = r.canApplySecret(ctx, secret); err != nil {
-			if failures[iteration.Name] != "" {
-				failures[iteration.Name] = failures[iteration.Name] + " " + err.Error()
+			if failures[iterationName] != "" {
+				failures[iterationName] = failures[iterationName] + " " + err.Error()
 			} else {
-				failures[iteration.Name] = err.Error()
+				failures[iterationName] = err.Error()
 			}
 		}
 
-		if failures[iteration.Name] != "" {
+		if failures[iterationName] != "" {
 			continue
 		}
 
@@ -248,7 +255,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			logger.Info(fmt.Sprintf("Skipping apply for configmap %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
 
 			disabledIterations = append(disabledIterations, konfigurev1alpha1.DisabledIteration{
-				Name: iteration.Name,
+				Name: iterationName,
 				Kind: "ConfigMap",
 				Target: konfigurev1alpha1.DisabledIterationTarget{
 					Name:      secret.Name,
@@ -258,9 +265,9 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Failed to apply configmap %s/%s for app: %s", configmap.Namespace, configmap.Name, iteration.Name))
+			logger.Error(err, fmt.Sprintf("Failed to apply configmap %s/%s for app: %s", configmap.Namespace, configmap.Name, iterationName))
 
-			failures[iteration.Name] = err.Error()
+			failures[iterationName] = err.Error()
 			continue
 		}
 
@@ -269,7 +276,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			logger.Info(fmt.Sprintf("Skipping apply for secret %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
 
 			disabledIterations = append(disabledIterations, konfigurev1alpha1.DisabledIteration{
-				Name: iteration.Name,
+				Name: iterationName,
 				Kind: "Secret",
 				Target: konfigurev1alpha1.DisabledIterationTarget{
 					Name:      secret.Name,
@@ -279,27 +286,27 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Failed to apply secret %s/%s for app: %s", secret.Namespace, secret.Name, iteration.Name))
+			logger.Error(err, fmt.Sprintf("Failed to apply secret %s/%s for app: %s", secret.Namespace, secret.Name, iterationName))
 
-			failures[iteration.Name] = err.Error()
+			failures[iterationName] = err.Error()
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Successfully reconciled rendered configmap and secret for: %s", iteration.Name))
+		logger.Info(fmt.Sprintf("Successfully reconciled rendered configmap and secret for: %s", iterationName))
 	}
 
 	logger.Info(fmt.Sprintf("Failures: %s", failures))
 
-	cr.Status.Failures = []konfigurev1alpha1.IterationFailure{}
+	cr.Status.Failed = []konfigurev1alpha1.FailedIteration{}
 	for failedIteration, failureMessage := range failures {
-		cr.Status.Failures = append(cr.Status.Failures, konfigurev1alpha1.IterationFailure{
+		cr.Status.Failed = append(cr.Status.Failed, konfigurev1alpha1.FailedIteration{
 			Name:    failedIteration,
 			Message: failureMessage,
 		})
 	}
 
 	// Status update for disabled reconciliations
-	cr.Status.DisabledIterations = disabledIterations
+	cr.Status.Disabled = disabledIterations
 
 	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
