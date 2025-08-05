@@ -19,7 +19,9 @@ package controller
 import (
 	"context"
 	"fmt"
+	"io"
 	"maps"
+	"net/http"
 	"os"
 	"path"
 	"slices"
@@ -382,17 +384,56 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchema(ctx context.Context, 
 		return "", fmt.Errorf("KonfigurationSchema %s/%s not found", spec.Reference.Namespace, spec.Reference.Name)
 	}
 
-	file, err := os.CreateTemp(KonfigurationSchemaDir, fmt.Sprintf("%s-%s", spec.Reference.Namespace, spec.Reference.Name))
+	prefix := fmt.Sprintf("%s-%s", spec.Reference.Namespace, spec.Reference.Name)
+
+	if schema.Spec.Raw.Remote.Url != "" {
+		return r.fetchKonfigurationSchemaFromUrl(prefix, schema.Spec.Raw.Remote.Url)
+	}
+
+	return r.saveKonfigurationSchemaRawContentToTempFile(prefix, schema.Spec.Raw.Content)
+}
+
+func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string, url string) (string, error) {
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
 
-	_, err = file.WriteString(schema.Spec.Raw)
+	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return "", err
 	}
 
-	return file.Name(), err
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(response.Body)
+
+	file, err := os.CreateTemp(KonfigurationSchemaDir, prefix)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		_ = os.Remove(file.Name())
+		return "", err
+	}
+
+	return file.Name(), nil
+}
+
+func (r *KonfigurationReconciler) saveKonfigurationSchemaRawContentToTempFile(prefix string, content string) (string, error) {
+	file, err := os.CreateTemp(KonfigurationSchemaDir, prefix)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = file.WriteString(content)
+	if err != nil {
+		return "", err
+	}
+
+	return file.Name(), nil
 }
 
 func (r *KonfigurationReconciler) canApplyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {

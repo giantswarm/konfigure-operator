@@ -43,7 +43,17 @@ spec:
             description: KonfigurationSchemaSpec defines the desired state of KonfigurationSchema.
             properties:
               raw:
-                type: string
+                properties:
+                  content:
+                    type: string
+                  remote:
+                    properties:
+                      url:
+                        type: string
+                    type: object
+                type: object
+            required:
+            - raw
             type: object
           status:
             description: KonfigurationSchemaStatus defines the observed state of KonfigurationSchema.

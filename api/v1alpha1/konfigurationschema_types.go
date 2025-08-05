@@ -25,7 +25,16 @@ import (
 
 // KonfigurationSchemaSpec defines the desired state of KonfigurationSchema.
 type KonfigurationSchemaSpec struct {
-	Raw string `json:"raw,omitempty"`
+	Raw Raw `json:"raw"`
+}
+
+type Raw struct {
+	Remote  Remote `json:"remote,omitempty"`
+	Content string `json:"content,omitempty"`
+}
+
+type Remote struct {
+	Url string `json:"url,omitempty"`
 }
 
 // KonfigurationSchemaStatus defines the observed state of KonfigurationSchema.

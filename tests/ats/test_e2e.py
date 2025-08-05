@@ -333,7 +333,9 @@ def test_konfiguration_working(setup, kube_cluster: Cluster) -> None:
             "namespace": "default",
         },
         "spec": {
-            "raw": raw_schema,
+            "raw": {
+                "content": raw_schema,
+            },
         }
     }
 
