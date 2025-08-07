@@ -7,6 +7,7 @@ toolchain go1.24.2
 require (
 	github.com/deckarep/golang-set/v2 v2.7.0
 	github.com/giantswarm/konfigure v1.2.0
+	github.com/go-logr/logr v1.4.3
 	github.com/prometheus/client_golang v1.22.0
 	k8s.io/api v0.33.3
 	k8s.io/apimachinery v0.33.3
@@ -89,7 +90,6 @@ require (
 	github.com/giantswarm/microerror v0.4.1 // indirect
 	github.com/giantswarm/valuemodifier v0.5.3 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.0 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect

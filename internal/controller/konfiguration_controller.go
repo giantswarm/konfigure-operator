@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
+
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/giantswarm/konfigure-operator/internal/konfigure"
@@ -52,10 +54,15 @@ import (
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
+type KonfigurationReconcilerOptions struct {
+	Verbose bool
+}
+
 // KonfigurationReconciler reconciles a Konfiguration object
 type KonfigurationReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme  *runtime.Scheme
+	Options KonfigurationReconcilerOptions
 }
 
 // +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=konfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -87,7 +94,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		RecordReconcileDuration(cr.GroupVersionKind(), cr.ObjectMeta, reconcileStart)
 
 		for _, condition := range cr.Status.Conditions {
-			logger.Info(fmt.Sprintf("Finished Reconciling ManagementClusterConfiguration: %s/%s with status: %s/%s :: %s", cr.GetNamespace(), cr.GetName(), condition.Type, condition.Status, condition.Reason))
+			logger.Info(fmt.Sprintf("Finished reconciling Konfiguration: %s/%s with status: %s/%s :: %s", cr.GetNamespace(), cr.GetName(), condition.Type, condition.Status, condition.Reason))
 		}
 
 		RecordConditions(cr.GroupVersionKind(), cr.ObjectMeta, cr.Status.Conditions)
@@ -154,8 +161,15 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	logger.Info("Konfigure cache successfully updated!")
 
 	// Initialize Dynamic Service
+	var dynamicServiceLogger logr.Logger
+	if r.Options.Verbose {
+		dynamicServiceLogger = logger
+	} else {
+		dynamicServiceLogger = logr.Discard()
+	}
+
 	service := konfigureService.NewDynamicService(konfigureService.DynamicServiceConfig{
-		Log: logger,
+		Log: dynamicServiceLogger,
 	})
 
 	// Fetch konfiguration schema
