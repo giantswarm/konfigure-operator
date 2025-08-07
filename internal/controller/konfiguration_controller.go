@@ -228,8 +228,10 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 			failures[iterationName] = err.Error()
 
-			// TODO Record metric for generation
+			RecordRendering(cr, iterationName, false)
 			continue
+		} else {
+			RecordRendering(cr, iterationName, true)
 		}
 
 		logger.Info(fmt.Sprintf("Successfully rendered iteration: %s", iterationName))

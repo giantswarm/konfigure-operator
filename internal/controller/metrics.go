@@ -29,6 +29,14 @@ var (
 		[]string{"resource_kind", "resource_name", "resource_namespace", "app_name", "config_cluster_name", "destination_namespace"},
 	)
 
+	renderingGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "konfigure_operator_rendering",
+			Help: "Configuration rendering status of a given iteration",
+		},
+		[]string{"resource_kind", "resource_name", "resource_namespace", "iteration_name", "destination_namespace"},
+	)
+
 	reconcileDurationHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name: "konfigure_operator_reconcile_duration_seconds",
@@ -66,10 +74,19 @@ func RecordGeneration(obj *konfigurev1alpha1.ManagementClusterConfiguration, app
 	generationGauge.WithLabelValues(obj.Kind, obj.Name, obj.Namespace, app, obj.Spec.Configuration.Cluster.Name, obj.Spec.Destination.Namespace).Set(value)
 }
 
+func RecordRendering(obj *konfigurev1alpha1.Konfiguration, iterationName string, success bool) {
+	var value float64
+	if success {
+		value = 1
+	}
+
+	renderingGauge.WithLabelValues(obj.Kind, obj.Name, obj.Namespace, iterationName, obj.Spec.Destination.Namespace).Set(value)
+}
+
 func RecordReconcileDuration(gvk schema.GroupVersionKind, meta v1.ObjectMeta, start time.Time) {
 	reconcileDurationHistogram.WithLabelValues(gvk.Kind, meta.Name, meta.Namespace).Observe(time.Since(start).Seconds())
 }
 
 func init() {
-	metrics.Registry.MustRegister(conditionGauge, generationGauge, reconcileDurationHistogram)
+	metrics.Registry.MustRegister(conditionGauge, generationGauge, renderingGauge, reconcileDurationHistogram)
 }
