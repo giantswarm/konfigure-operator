@@ -150,6 +150,7 @@ type DisabledIterationTarget struct {
 // +kubebuilder:printcolumn:name="SchemaName",type="string",JSONPath=".spec.targets.schema.reference.name",description=""
 // +kubebuilder:printcolumn:name="SchemaNamespace",type="string",JSONPath=".spec.targets.schema.reference.namespace",description=""
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description=""
+// +kubebuilder:printcolumn:name="Suspended",type="boolean",JSONPath=".spec.reconciliation.suspend",description=""
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
 type Konfiguration struct {
