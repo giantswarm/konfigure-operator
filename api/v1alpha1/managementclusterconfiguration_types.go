@@ -29,9 +29,6 @@ const (
 
 // ManagementClusterConfigurationSpec defines the desired state of ManagementClusterConfiguration.
 type ManagementClusterConfigurationSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Sources
 	Sources Sources `json:"sources"`
 
@@ -67,6 +64,25 @@ type Destination struct {
 	Namespace string `json:"namespace"`
 	// +required
 	Naming NamingOptions `json:"naming"`
+}
+
+func (n *NamingOptions) Render(core string) string {
+	name := core
+
+	separator := ""
+	if n.UseSeparator {
+		separator = "-"
+	}
+
+	if n.Prefix != "" {
+		name = n.Prefix + separator + name
+	}
+
+	if n.Suffix != "" {
+		name = name + separator + n.Suffix
+	}
+
+	return name
 }
 
 type NamingOptions struct {
@@ -191,6 +207,7 @@ type DisabledReconcileTarget struct {
 // +kubebuilder:printcolumn:name="Suffix",type="string",JSONPath=".spec.destination.naming.suffix",description=""
 // +kubebuilder:printcolumn:name="UseSeparator",type="boolean",JSONPath=".spec.destination.naming.useSeparator",description=""
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description=""
+// +kubebuilder:printcolumn:name="Suspended",type="boolean",JSONPath=".spec.reconciliation.suspend",description=""
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
 type ManagementClusterConfiguration struct {

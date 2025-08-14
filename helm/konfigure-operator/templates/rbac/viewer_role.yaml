@@ -4,23 +4,23 @@ kind: ClusterRole
 metadata:
   labels:
     {{- include "labels.common" . | nindent 4 }}
-  name: {{ .Release.Name }}-editor-role
+  name: {{ .Release.Name }}-viewer-role
 rules:
 - apiGroups:
   - konfigure.giantswarm.io
   resources:
+  - konfigurations
+  - konfigurationschemas
   - managementclusterconfigurations
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - konfigure.giantswarm.io
   resources:
+  - konfigurations/status
+  - konfigurationschemas/status
   - managementclusterconfigurations/status
   verbs:
   - get

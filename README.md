@@ -11,30 +11,28 @@ any interfaces. The result manifest can be mounted to Giant Swarm App CRs, Flux 
 
 ## Supported configurations
 
-### ManagementClusterConfiguration
+### Konfiguration
 
-This CRD is used to generate management cluster app configurations.
+This CRD is used to generate configurations for the schema-based Generalized Configuration System.
 
-Based on a set of filters, a set of applications are selected for generation for the given management cluster.
+The source for the generation is fetched from a Flux GitRepository that should point to a repository that contains
+the configuration code conforming to the referenced schema.
 
-The source for the generation is fetched from a Flux GitRepository that should point to an assembled Giant Swarm
-configuration repository.
-
-Encryption support is consisted of SOPS. The operator automatically fetches SOPS keys from the cluster that has the
+Encryption support consists of SOPS. The operator automatically fetches SOPS keys from the cluster that has the
 `konfigure.giantswarm.io/data: sops-keys` label.
 
 Generated configurations are applied to a destination namespace. The `.metadata.name` of these resources will be
 generated according to the following rules:
 
-- the core of it is the app name as is present in e.g. `shared-configs` folder `default/apps`
-- if `.spec.destination.naming.prefix` is present, it will be prepended to the app name with a `-` character
+- the core of it is the iteration name, the keys in the `.spec.targets.iterations` map
+- if `.spec.destination.naming.prefix` is present, it will be prepended to the iteration name with a `-` character
   - this value must start and end with an alphanumeric character, can contain `-` characters within
   - must be no longer than 64 characters
-- if `.spec.destination.naming.suffix` is present, it will be appended to the app name with a `-` character
+- if `.spec.destination.naming.suffix` is present, it will be appended to the iteration name with a `-` character
   - this value must start and end with an alphanumeric character, can contain `-` characters within
   - must be no longer than 64 characters
 - if `.spec.destination.naming.useSeparator` is set to false, the `-` character will be omitted from gluing the prefix
-  and the suffix from the app name
+  and the suffix from the iteration name
 
  The reason for these restrictions is that ConfigMap and Secret `.metadata.name` field must follow:
  https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names.
@@ -44,25 +42,33 @@ Here is an example:
 
 ```yaml
 apiVersion: konfigure.giantswarm.io/v1alpha1
-kind: ManagementClusterConfiguration
+kind: Konfiguration
 metadata:
   name: example-1
   namespace: default
 spec:
-  configuration:
-    applications:
-      includes:
-        exactMatchers:
-          - app-operator
-          - chart-operator
-        regexMatchers:
-          - kyverno.*
-      excludes:
-        exactMatchers:
-          - kyverno-policies-dx
-        regexMatchers: []
-    cluster:
-      name: golem
+  targets:
+    schema:
+      reference:
+        name: konfigurationschema-example
+        namespace: default
+    defaults:
+      variables:
+        - name: installation
+          value: golem
+    iterations:
+      app-operator:
+        variables:
+          - name: app
+            value: app-operator
+      chart-operator:
+        variables:
+          - name: app
+            value: chart-operator
+      dex-operator:
+        variables:
+          - name: app
+            value: dex-operator
   destination:
     namespace: default
     naming:
@@ -78,34 +84,53 @@ spec:
 ```
 #### Breakdown and explanation
 
-This section contains explanation for using `ManagementClusterConfiguration` CRs to generate configs.
+This section contains explanation for using `Konfiguration` CRs to generate configs.
 
-##### .spec.configuration
+##### .spec.targets
 
-The `.applications` section contains information on which application to render configuration for:
+This section describes what to render.
 
-- both the `.includes` and the `.excludes` section contains exact and regex matchers.
-  - the regex matchers work with regular expressions following: https://github.com/google/re2/wiki/Syntax
-  - the filtering logic works in the following way:
-    - list all possible apps in the fetched source (e.g. all folders in `shared-configs` folder: `default/apps`)
-    - add all apps from the full set that matches any `.spec.configuration.applications.includes.exactMatchers` to the result set
-    - add all apps from the full set that matches any of the `.spec.configuration.applications.includes.regexMatchers`
-    - remove all apps from the result set that matches any `.spec.configuration.applications.excludes.exactMatchers`
-    - remove all apps from the result set that matches any `.spec.configuration.applications.excludes.regexMatchers`
-    - the result set is finished
-- app listed in `.includes.exactMatchers` that are not present in all possible apps, will be listed on the CR status as a miss
+The `.schema` field contains information on the schema to use to interpret the referenced git repository and to use to
+render the listed targets. The `.reference` field must point to an existing `KonfigurationSchema` CR, for example:
 
-The `.cluster` section contains information on which management cluster overrides should be applied on top of the default
-configuration. A folder named `.cluster.name` must exist in the assembled source under the `installations` folder. Under that,
-the `apps` folder must contain the app specific folder with their respective configuration override templates.
+```yaml
+apiVersion: konfigure.giantswarm.io/v1alpha1
+kind: KonfigurationSchema
+metadata:
+  name: konfigurationschema-example
+  namespace: default
+spec:
+  raw:
+    remote:
+      url: https://raw.githubusercontent.com/giantswarm/konfiguration-schemas/refs/heads/main/schemas/management-cluster-configuration/schema.yaml
+```
+
+The `.raw.remote.url` field should point to an accessible Generalized Configuration System schema file.
+
+Read more on how schemas for the Generalized Configuration systems work in the
+[konfigure](https://github.com/giantswarm/konfigure/blob/main/README.md) repository.
+
+Alternatively, a `KonfigurationSchema` can provide the full contents of the schema under `.spec.raw.content`.
+
+A schema can take variables to make complex layers and structures and decide on which paths in the tree to render
+based on values of those variables. The `.defaults.variables` field contains `.name` and `.value` pairs that will
+be used in each target to render. Individual iterations can optionally provide overrides for these given defaults.
+
+The `.iterations` field is a map of targets to render. Each key of the map acts as a unique name for that iteration.
+This name will be used throughout the reconciliation loop to render the resulting manifests and refer back to the
+iteration in case of errors or any other cases.
+
+Each iteration has a `.variables` field that can provide further variables to the schema-based rendering process. These
+variables will be merged on top of the default variables and passed down to `konfigure` along with the schema and the
+fetched source to render the desired targets.
 
 ##### .destination
 
 This section contains information on where to apply the generated manifests and how to name them.
 
 Please note that there is collision detection implemented within the operator logic to avoid managing a single ConfigMap
-or Secret by multiple configuration rendering CRs. Also, if a generated manifest would overwrite an existing manifest
-that is not considered to be managed by the operator, apply will fail stating that the target already exists.
+or Secret by multiple configuration rendering CRs. Also, if a generated manifest overwrites an existing manifest
+not considered to be managed by the operator, apply will fail stating that the target already exists.
 
 Resources managed by the operator are considered exclusive to the operator. Any changes to them will be overwritten by
 consecutive reconciliations.
@@ -119,8 +144,8 @@ configuration.giantswarm.io/generated-by: konfigure-operator
 # The following labels are used to identify the config CR that was used to generate the manifest
 configuration.giantswarm.io/ownerApiGroup: konfigure.giantswarm.io
 configuration.giantswarm.io/ownerApiVersion: v1alpha1
-configuration.giantswarm.io/ownerKind: ManagementClusterConfiguration
-configuration.giantswarm.io/ownerName: gauss-configuration
+configuration.giantswarm.io/ownerKind: Konfiguration
+configuration.giantswarm.io/ownerName: gauss-konfiguration
 configuration.giantswarm.io/ownerNamespace: giantswarm
 
 # This label is used to present which revision on the source was used to generate this manifest
@@ -131,10 +156,10 @@ Apps fail to render or apply will simply be skipped over and will be presented a
 blocking the generation of other matched apps. Any failure being present will mark the whole CR as failed in the Ready
 condition.
 
-> ⚠️ Please note that "transactions" are not supported at the moment, meaning that if a configmap and a secret is generated
+> ⚠️ Please note that "transactions" are not supported at the moment, meaning that if configmap and a secret are generated
 > successfully, we do not try to atomically apply both of them to the server. First the config map is applied, then the
-> secret. If let's say the secret apply fails, we do not revert the config map. Such scenario will mark the app as failed
-> tho in `.status.failures`.
+> secret. If let's say the secret apply fails, we do not revert the config map. Such a scenario will mark the iteration
+> as failed tho in `.status.failures`.
 
 ##### .reconciliation
 
@@ -159,17 +184,18 @@ generated config maps and secrets to disable `konfigure-operator` updating them 
 configuration.giantswarm.io/reconcile: disabled
 ```
 
-Disabled resources will be marked on the `ManagementClusterConfiguration` CR's `.status.disabledReconciles` field:
+Disabled resources will be marked on the `Konfiguration` CR's `.status.disabled` field. The `.name` field of each object
+references the iteration name.
 
 ```yaml
 status:
-  disabledReconciles:
-  - appName: konfigure-operator
+  disabled:
+  - name: konfigure-operator
     kind: ConfigMap
     target:
       name: konfigure-operator-konfiguration
       namespace: giantswarm
-  - appName: konfigure-operator
+  - name: konfigure-operator
     kind: Secret
     target:
       name: konfigure-operator-konfiguration
@@ -191,29 +217,23 @@ status:
       reason: ReconciliationFailed
       status: "False"
       type: Ready
-  failures:
-    - appName: app-operator
+  failed:
+    - name: app-operator
       message: secrets "app-operator-example" already exists
-    - appName: aws-operator
+    - name: aws-operator
       message: 'failed to render template from "default/apps/aws-operator/configmap-values.yaml.template":
       template: main:75:37: executing "main" at <.workloadCluster.ssh.ssoPublicKey>:
       map has no entry for key "ssoPublicKey"'
   lastAppliedRevision: 9eb2f00e201df4f9d2b1e3a15e870e2b911726ab
   lastAttemptedRevision: c8f73a3b5ad0ddaad337d78f4e49ea8eae49d2a7
   lastReconciledAt: "2025-03-12T15:06:07.572012492Z"
-  misses:
-    - no-such-operator
   observedGeneration: 4
 ```
 
-The `.failures` section contains a list of apps with their name and a message that describes where the process for it failed.
+The `.failed` section contains a list of apps with their name and a message that describes where the process for it failed.
+The `.name` field of each object references the iteration name.
 
-The `.misses` section is informative on the app names that were listed in `.includes.exactMatchers` that were not matched
-against any of the possible apps. This is merely use to indicate if maybe a type is in an app name or the config repo does
-not have that app, in order to avoid silently not generating configs for an expected app. Misses will not mark the CR
-as failed.
-
-We only support the `Ready` condition at the moment. If all app configurations generated and applied fine, it will be
+We only support the `Ready` condition at the moment. If all iterations rendered and applied fine, it will be
 marked as `ReconciliationSucceeded`.
 
 If there are any failures, the CR will be marked as `ReconciliationFailed `and will be retried indefinitely
@@ -233,7 +253,7 @@ occurred at `.lastReconciledAt` and at generation `.observedGeneration`.
 
 ## Development
 
-In order to generate CRDs, run the following commands:
+To generate CRDs, run the following commands:
 
 ```shell
 make api

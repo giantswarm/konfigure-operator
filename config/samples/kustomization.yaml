@@ -1,7 +1,9 @@
 ## Append samples of your project ##
 resources:
 - example-1.yaml
-- example-2.yaml
-- example-3.yaml
-- example-4.yaml
+#- example-2.yaml
+#- example-3.yaml
+#- example-4.yaml
+- konfigure_v1alpha1_konfiguration.yaml
+- konfigure_v1alpha1_konfigurationschema.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples
