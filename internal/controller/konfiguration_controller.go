@@ -19,65 +19,82 @@ package controller
 import (
 	"context"
 	"fmt"
+	"io"
+	"maps"
+	"net/http"
+	"os"
+	"path"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
+
 	v1 "k8s.io/api/core/v1"
+
+	"github.com/giantswarm/konfigure-operator/internal/konfigure"
+
+	konfigureModel "github.com/giantswarm/konfigure/pkg/model"
+	konfigureService "github.com/giantswarm/konfigure/pkg/service"
+
 	apiMachineryErrors "k8s.io/apimachinery/pkg/api/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
-	"github.com/giantswarm/konfigure-operator/internal/konfigure"
-
-	konfigureService "github.com/giantswarm/konfigure/pkg/service"
-
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
-// ManagementClusterConfigurationReconciler reconciles a ManagementClusterConfiguration object
-type ManagementClusterConfigurationReconciler struct {
-	client.Client
-	Scheme *runtime.Scheme
+type KonfigurationReconcilerOptions struct {
+	Verbose bool
 }
 
-// +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=managementclusterconfigurations,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=managementclusterconfigurations/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=managementclusterconfigurations/finalizers,verbs=update
+// KonfigurationReconciler reconciles a Konfiguration object
+type KonfigurationReconciler struct {
+	client.Client
+	Scheme  *runtime.Scheme
+	Options KonfigurationReconcilerOptions
+}
+
+// +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=konfigurations,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=konfigurations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=konfigurations/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the ManagementClusterConfiguration object against the actual cluster state, and then
+// the Konfiguration object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.1/pkg/reconcile
-func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.2/pkg/reconcile
+func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	reconcileStart := time.Now()
 
 	// Get resource under reconciliation
-	cr := &konfigurev1alpha1.ManagementClusterConfiguration{}
+	cr := &konfigurev1alpha1.Konfiguration{}
 	if err := r.Get(ctx, req.NamespacedName, cr); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	logger.Info(fmt.Sprintf("Reconciling ManagementClusterConfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
+	logger.Info(fmt.Sprintf("Reconciling Konfiguration: %s/%s", cr.GetNamespace(), cr.GetName()))
 
 	defer func() {
 		RecordReconcileDuration(cr.GroupVersionKind(), cr.ObjectMeta, reconcileStart)
 
 		for _, condition := range cr.Status.Conditions {
-			logger.Info(fmt.Sprintf("Finished Reconciling ManagementClusterConfiguration: %s/%s with status: %s/%s :: %s", cr.GetNamespace(), cr.GetName(), condition.Type, condition.Status, condition.Reason))
+			logger.Info(fmt.Sprintf("Finished reconciling Konfiguration: %s/%s with status: %s/%s :: %s", cr.GetNamespace(), cr.GetName(), condition.Type, condition.Status, condition.Reason))
 		}
 
 		RecordConditions(cr.GroupVersionKind(), cr.ObjectMeta, cr.Status.Conditions)
@@ -121,8 +138,8 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		return ctrl.Result{}, nil
 	}
 
-	// Initialize Konfigure
-	sops, err := InitializeSopsEnv(ctx, "/sopsenv/mcc")
+	// Initialize SOPS Environment
+	sops, err := InitializeSopsEnv(ctx, "/sopsenv/kfg")
 	if err != nil {
 		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
@@ -132,7 +149,8 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	}
 	logger.Info(fmt.Sprintf("SOPS environment successfully set up at: %s", sops.GetKeysDir()))
 
-	fluxUpdater, err := InitializeFluxUpdater("/tmp/konfigure-cache/mcc", cr.Spec.Sources.Flux)
+	// Initialize Flux Updater
+	fluxUpdater, err := InitializeFluxUpdater("/tmp/konfigure-cache/kfg", cr.Spec.Sources.Flux)
 	if err != nil {
 		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
@@ -142,7 +160,32 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	}
 	logger.Info("Konfigure cache successfully updated!")
 
-	service, err := r.initializeKonfigure(ctx, sops.GetKeysDir(), fluxUpdater.CacheDir, cr.Spec.Configuration.Cluster.Name)
+	// Initialize Dynamic Service
+	var dynamicServiceLogger logr.Logger
+	if r.Options.Verbose {
+		dynamicServiceLogger = logger
+	} else {
+		dynamicServiceLogger = logr.Discard()
+	}
+
+	service := konfigureService.NewDynamicService(konfigureService.DynamicServiceConfig{
+		Log: dynamicServiceLogger,
+	})
+
+	// Fetch konfiguration schema
+	schemaFilePath, err := r.fetchKonfigurationSchema(ctx, cr.Spec.Targets.Schema)
+
+	defer func(name string) {
+		if schemaFilePath == "" {
+			return
+		}
+
+		err := os.Remove(name)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to remove temporary schema file: %s", schemaFilePath))
+		}
+	}(schemaFilePath)
+
 	if err != nil {
 		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
 			logger.Error(updateStatusErr, "Failed to update status on setup failure")
@@ -150,60 +193,78 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 
 		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
 	}
-
-	appsToRender, missedExactMatchers, err := logic.GetAppsToReconcile(service.GetDir(), &cr.Spec.Configuration)
-	if err != nil {
-		if updateStatusErr := r.updateStatusOnSetupFailure(ctx, cr, err); updateStatusErr != nil {
-			logger.Error(updateStatusErr, "Failed to update status on setup failure")
-		}
-
-		return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.RetryInterval.Duration}, err
-	}
-
-	logger.Info(fmt.Sprintf("Apps to reconcile: %s", strings.Join(appsToRender, ",")))
-	logger.Info(fmt.Sprintf("Missed exact matchers: %s", strings.Join(missedExactMatchers, ",")))
+	logger.Info(fmt.Sprintf("Konfiguration schema file path: %s", schemaFilePath))
 
 	revision, err := konfigure.GetLastArchiveSHA(fluxUpdater.CacheDir)
 	if err != nil {
-		logger.Error(err, fmt.Sprintf("Failed to get last archive SHA from: %s", service.GetDir()))
+		logger.Error(err, fmt.Sprintf("Failed to get last archive SHA from: %s", fluxUpdater.CacheDir))
 		revision = "unknown"
 	}
 
 	ownershipLabels := logic.GenerateOwnershipLabels(cr.GroupVersionKind(), cr.ObjectMeta, revision)
 
+	// Render targets
+	iterationNames := slices.Collect(maps.Keys(cr.Spec.Targets.Iterations))
+	slices.Sort(iterationNames)
+
 	failures := make(map[string]string)
-	var disabledReconciles []konfigurev1alpha1.DisabledReconcile
-	for _, appToRender := range appsToRender {
-		configmap, secret, err := r.renderAppConfiguration(ctx, service, appToRender, revision, cr.Spec.Destination, ownershipLabels)
+	var disabledIterations []konfigurev1alpha1.DisabledIteration
+	for _, iterationName := range iterationNames {
+		iteration := cr.Spec.Targets.Iterations[iterationName]
 
-		if err != nil {
-			logger.Error(err, fmt.Sprintf("Failed to render app configuration for: %s", appToRender))
+		variables := make(map[string]string)
 
-			failures[appToRender] = err.Error()
-
-			RecordGeneration(cr, appToRender, false)
-			continue
-		} else {
-			RecordGeneration(cr, appToRender, true)
+		for _, defaultVariable := range cr.Spec.Targets.Defaults.Variables {
+			variables[defaultVariable.Name] = defaultVariable.Value
 		}
 
-		logger.Info(fmt.Sprintf("Successfully rendered app configuration for: %s", appToRender))
+		for _, valueOverride := range iteration.Variables {
+			variables[valueOverride.Name] = valueOverride.Value
+		}
+
+		var rawVariables []string
+		for k, v := range variables {
+			rawVariables = append(rawVariables, fmt.Sprintf("%s=%s", k, v))
+		}
+
+		configmap, secret, err := service.Render(konfigureService.RenderInput{
+			Dir:              path.Join(fluxUpdater.CacheDir, "latest"),
+			Schema:           schemaFilePath,
+			Variables:        rawVariables,
+			Name:             cr.Spec.Destination.Naming.Render(iterationName),
+			Namespace:        cr.Spec.Destination.Namespace,
+			ConfigMapDataKey: konfigureModel.DefaultConfigMapDataKey,
+			SecretDataKey:    konfigureModel.DefaultSecretDataKey,
+			ExtraLabels:      ownershipLabels,
+		})
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Failed to render iteration: %s with variables: %s", iterationName, strings.Join(rawVariables, ",")))
+
+			failures[iterationName] = err.Error()
+
+			RecordRendering(cr, iterationName, false)
+			continue
+		} else {
+			RecordRendering(cr, iterationName, true)
+		}
+
+		logger.Info(fmt.Sprintf("Successfully rendered iteration: %s", iterationName))
 
 		// Pre-flight check config map apply
 		if err = r.canApplyConfigMap(ctx, configmap); err != nil {
-			failures[appToRender] = err.Error()
+			failures[iterationName] = err.Error()
 		}
 
 		// Pre-flight check secret apply. Present both errors to avoid the need to fix in multiple turns.
 		if err = r.canApplySecret(ctx, secret); err != nil {
-			if failures[appToRender] != "" {
-				failures[appToRender] = failures[appToRender] + " " + err.Error()
+			if failures[iterationName] != "" {
+				failures[iterationName] = failures[iterationName] + " " + err.Error()
 			} else {
-				failures[appToRender] = err.Error()
+				failures[iterationName] = err.Error()
 			}
 		}
 
-		if failures[appToRender] != "" {
+		if failures[iterationName] != "" {
 			continue
 		}
 
@@ -211,10 +272,10 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		if !shouldReconcile {
 			logger.Info(fmt.Sprintf("Skipping apply for configmap %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
 
-			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
-				AppName: appToRender,
-				Kind:    "ConfigMap",
-				Target: konfigurev1alpha1.DisabledReconcileTarget{
+			disabledIterations = append(disabledIterations, konfigurev1alpha1.DisabledIteration{
+				Name: iterationName,
+				Kind: "ConfigMap",
+				Target: konfigurev1alpha1.DisabledIterationTarget{
 					Name:      secret.Name,
 					Namespace: secret.Namespace,
 				},
@@ -222,9 +283,9 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		}
 
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Failed to apply configmap %s/%s for app: %s", configmap.Namespace, configmap.Name, appToRender))
+			logger.Error(err, fmt.Sprintf("Failed to apply configmap %s/%s for app: %s", configmap.Namespace, configmap.Name, iterationName))
 
-			failures[appToRender] = err.Error()
+			failures[iterationName] = err.Error()
 			continue
 		}
 
@@ -232,10 +293,10 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		if !shouldReconcile {
 			logger.Info(fmt.Sprintf("Skipping apply for secret %s/%s as it is disabled for reconciliation", configmap.Namespace, configmap.Name))
 
-			disabledReconciles = append(disabledReconciles, konfigurev1alpha1.DisabledReconcile{
-				AppName: appToRender,
-				Kind:    "Secret",
-				Target: konfigurev1alpha1.DisabledReconcileTarget{
+			disabledIterations = append(disabledIterations, konfigurev1alpha1.DisabledIteration{
+				Name: iterationName,
+				Kind: "Secret",
+				Target: konfigurev1alpha1.DisabledIterationTarget{
 					Name:      secret.Name,
 					Namespace: secret.Namespace,
 				},
@@ -243,31 +304,27 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 		}
 
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Failed to apply secret %s/%s for app: %s", secret.Namespace, secret.Name, appToRender))
+			logger.Error(err, fmt.Sprintf("Failed to apply secret %s/%s for app: %s", secret.Namespace, secret.Name, iterationName))
 
-			failures[appToRender] = err.Error()
+			failures[iterationName] = err.Error()
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Successfully reconciled rendered configmap and secret for: %s", appToRender))
+		logger.Info(fmt.Sprintf("Successfully reconciled rendered configmap and secret for: %s", iterationName))
 	}
 
-	// Status update for failures
 	logger.Info(fmt.Sprintf("Failures: %s", failures))
 
-	cr.Status.Failures = []konfigurev1alpha1.FailureStatus{}
-	for failedAppName, failureMessage := range failures {
-		cr.Status.Failures = append(cr.Status.Failures, konfigurev1alpha1.FailureStatus{
-			AppName: failedAppName,
+	cr.Status.Failed = []konfigurev1alpha1.FailedIteration{}
+	for failedIteration, failureMessage := range failures {
+		cr.Status.Failed = append(cr.Status.Failed, konfigurev1alpha1.FailedIteration{
+			Name:    failedIteration,
 			Message: failureMessage,
 		})
 	}
 
 	// Status update for disabled reconciliations
-	cr.Status.DisabledReconciles = disabledReconciles
-
-	// Status update for missed matchers
-	cr.Status.Misses = missedExactMatchers
+	cr.Status.Disabled = disabledIterations
 
 	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
@@ -314,22 +371,7 @@ func (r *ManagementClusterConfigurationReconciler) Reconcile(ctx context.Context
 	return ctrl.Result{RequeueAfter: cr.Spec.Reconciliation.Interval.Duration}, nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) initializeKonfigure(ctx context.Context, sopsKeysDir, cacheDir, installation string) (*konfigureService.Service, error) {
-	logger := log.FromContext(ctx)
-
-	// Konfigure service
-	service, err := konfigure.InitializeService(ctx, cacheDir, sopsKeysDir, installation)
-
-	if err != nil {
-		return nil, err
-	}
-
-	logger.Info("Konfigure service successfully initialized!")
-
-	return service, err
-}
-
-func (r *ManagementClusterConfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.ManagementClusterConfiguration, err error) error {
+func (r *KonfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.Konfiguration, err error) error {
 	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
 
@@ -347,21 +389,70 @@ func (r *ManagementClusterConfigurationReconciler) updateStatusOnSetupFailure(ct
 	return r.Status().Update(ctx, cr)
 }
 
-func (r *ManagementClusterConfigurationReconciler) renderAppConfiguration(ctx context.Context, service *konfigureService.Service, app, revision string, destination konfigurev1alpha1.Destination, ownershipLabels map[string]string) (*v1.ConfigMap, *v1.Secret, error) {
-	name := destination.Naming.Render(app)
+const (
+	KonfigurationSchemaDir = "/tmp/konfiguration-schemas"
+)
 
-	return service.Generate(ctx, konfigureService.GenerateInput{
-		App:         app,
-		Name:        name,
-		Namespace:   destination.Namespace,
-		ExtraLabels: ownershipLabels,
-		// If we don't set this to a non-empty string, konfigure will need git binary in container, but it would
-		// fail anyway cos the pulled source from source-controller does not have the .git metadata.
-		VersionOverride: revision,
-	})
+func (r *KonfigurationReconciler) fetchKonfigurationSchema(ctx context.Context, spec konfigurev1alpha1.Schema) (string, error) {
+	schema := &konfigurev1alpha1.KonfigurationSchema{}
+	err := r.Get(ctx, client.ObjectKey{Name: spec.Reference.Name, Namespace: spec.Reference.Namespace}, schema)
+	if apiMachineryErrors.IsNotFound(err) {
+		return "", fmt.Errorf("KonfigurationSchema %s/%s not found", spec.Reference.Namespace, spec.Reference.Name)
+	}
+
+	prefix := fmt.Sprintf("%s-%s", spec.Reference.Namespace, spec.Reference.Name)
+
+	if schema.Spec.Raw.Remote.Url != "" {
+		return r.fetchKonfigurationSchemaFromUrl(prefix, schema.Spec.Raw.Remote.Url)
+	}
+
+	return r.saveKonfigurationSchemaRawContentToTempFile(prefix, schema.Spec.Raw.Content)
 }
 
-func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
+func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string, url string) (string, error) {
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return "", err
+	}
+
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(response.Body)
+
+	file, err := os.CreateTemp(KonfigurationSchemaDir, prefix)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		_ = os.Remove(file.Name())
+		return "", err
+	}
+
+	return file.Name(), nil
+}
+
+func (r *KonfigurationReconciler) saveKonfigurationSchemaRawContentToTempFile(prefix string, content string) (string, error) {
+	file, err := os.CreateTemp(KonfigurationSchemaDir, prefix)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = file.WriteString(content)
+	if err != nil {
+		return "", err
+	}
+
+	return file.Name(), nil
+}
+
+func (r *KonfigurationReconciler) canApplyConfigMap(ctx context.Context, configmap *v1.ConfigMap) error {
 	existingObject := &v1.ConfigMap{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(configmap), existingObject)
@@ -380,7 +471,7 @@ func (r *ManagementClusterConfigurationReconciler) canApplyConfigMap(ctx context
 	return nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Context, generatedConfigMap *v1.ConfigMap) (bool, error) {
+func (r *KonfigurationReconciler) applyConfigMap(ctx context.Context, generatedConfigMap *v1.ConfigMap) (bool, error) {
 	existingObject := &v1.ConfigMap{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(generatedConfigMap), existingObject)
@@ -426,7 +517,7 @@ func (r *ManagementClusterConfigurationReconciler) applyConfigMap(ctx context.Co
 	return true, err
 }
 
-func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Context, generatedSecret *v1.Secret) error {
+func (r *KonfigurationReconciler) canApplySecret(ctx context.Context, generatedSecret *v1.Secret) error {
 	existingObject := &v1.Secret{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
@@ -445,7 +536,7 @@ func (r *ManagementClusterConfigurationReconciler) canApplySecret(ctx context.Co
 	return nil
 }
 
-func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Context, generatedSecret *v1.Secret) (bool, error) {
+func (r *KonfigurationReconciler) applySecret(ctx context.Context, generatedSecret *v1.Secret) (bool, error) {
 	existingObject := &v1.Secret{}
 
 	err := r.Get(ctx, client.ObjectKeyFromObject(generatedSecret), existingObject)
@@ -493,11 +584,16 @@ func (r *ManagementClusterConfigurationReconciler) applySecret(ctx context.Conte
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ManagementClusterConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *KonfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	err := os.MkdirAll(KonfigurationSchemaDir, 0700)
+	if err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&konfigurev1alpha1.ManagementClusterConfiguration{}, builder.WithPredicates(
+		For(&konfigurev1alpha1.Konfiguration{}, builder.WithPredicates(
 			predicate.GenerationChangedPredicate{},
 		)).
-		Named("managementclusterconfiguration").
+		Named("konfiguration").
 		Complete(r)
 }

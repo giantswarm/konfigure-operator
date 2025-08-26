@@ -1,0 +1,17 @@
+{{- if or (.Capabilities.APIVersions.Has "cilium.io/v2/CiliumNetworkPolicy") (eq .Values.cilium.enforce true) }}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  labels:
+    {{- include "labels.common" . | nindent 4 }}
+  name: {{ .Release.Name }}-egress-world
+  namespace: {{ .Release.Namespace }}
+spec:
+  egress:
+    - toEntities:
+        - world
+  endpointSelector:
+    matchLabels:
+      {{- include "labels.selector" . | nindent 6 }}
+{{- end }}

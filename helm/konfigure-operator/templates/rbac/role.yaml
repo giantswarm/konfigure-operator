@@ -9,6 +9,8 @@ rules:
 - apiGroups:
   - konfigure.giantswarm.io
   resources:
+  - konfigurations
+  - konfigurationschemas
   - managementclusterconfigurations
   verbs:
   - create
@@ -21,12 +23,16 @@ rules:
 - apiGroups:
   - konfigure.giantswarm.io
   resources:
+  - konfigurations/finalizers
+  - konfigurationschemas/finalizers
   - managementclusterconfigurations/finalizers
   verbs:
   - update
 - apiGroups:
   - konfigure.giantswarm.io
   resources:
+  - konfigurations/status
+  - konfigurationschemas/status
   - managementclusterconfigurations/status
   verbs:
   - get

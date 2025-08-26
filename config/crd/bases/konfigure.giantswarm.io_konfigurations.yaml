@@ -4,22 +4,19 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.16.4
-  name: managementclusterconfigurations.konfigure.giantswarm.io
+  name: konfigurations.konfigure.giantswarm.io
 spec:
   group: konfigure.giantswarm.io
   names:
-    kind: ManagementClusterConfiguration
-    listKind: ManagementClusterConfigurationList
-    plural: managementclusterconfigurations
+    kind: Konfiguration
+    listKind: KonfigurationList
+    plural: konfigurations
     shortNames:
-    - mcc
-    singular: managementclusterconfiguration
+    - kfg
+    singular: konfiguration
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.configuration.cluster.name
-      name: Cluster
-      type: string
     - jsonPath: .spec.destination.namespace
       name: Destination
       type: string
@@ -32,6 +29,12 @@ spec:
     - jsonPath: .spec.destination.naming.useSeparator
       name: UseSeparator
       type: boolean
+    - jsonPath: .spec.targets.schema.reference.name
+      name: SchemaName
+      type: string
+    - jsonPath: .spec.targets.schema.reference.namespace
+      name: SchemaNamespace
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -47,8 +50,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ManagementClusterConfiguration is the Schema for the managementclusterconfigurations
-          API.
+        description: Konfiguration is the Schema for the konfigurations API.
         properties:
           apiVersion:
             description: |-
@@ -68,47 +70,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: ManagementClusterConfigurationSpec defines the desired state
-              of ManagementClusterConfiguration.
+            description: KonfigurationSpec defines the desired state of Konfiguration.
             properties:
-              configuration:
-                description: Configuration
-                properties:
-                  applications:
-                    properties:
-                      excludes:
-                        properties:
-                          exactMatchers:
-                            items:
-                              type: string
-                            type: array
-                          regexMatchers:
-                            items:
-                              type: string
-                            type: array
-                        type: object
-                      includes:
-                        properties:
-                          exactMatchers:
-                            items:
-                              type: string
-                            type: array
-                          regexMatchers:
-                            items:
-                              type: string
-                            type: array
-                        type: object
-                    type: object
-                  cluster:
-                    properties:
-                      name:
-                        type: string
-                    required:
-                    - name
-                    type: object
-                required:
-                - cluster
-                type: object
               destination:
                 description: Destination
                 properties:
@@ -164,13 +127,75 @@ spec:
                     - gitRepository
                     type: object
                 type: object
+              targets:
+                description: Targets
+                properties:
+                  defaults:
+                    properties:
+                      variables:
+                        items:
+                          properties:
+                            name:
+                              description: Name
+                              type: string
+                            value:
+                              description: Value
+                              type: string
+                          required:
+                          - name
+                          - value
+                          type: object
+                        type: array
+                    type: object
+                  iterations:
+                    additionalProperties:
+                      properties:
+                        variables:
+                          items:
+                            properties:
+                              name:
+                                description: Name
+                                type: string
+                              value:
+                                description: Value
+                                type: string
+                            required:
+                            - name
+                            - value
+                            type: object
+                          type: array
+                      type: object
+                    type: object
+                  schema:
+                    description: Schema
+                    properties:
+                      reference:
+                        description: Reference
+                        properties:
+                          name:
+                            description: Name
+                            type: string
+                          namespace:
+                            description: Namespace
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
+                    required:
+                    - reference
+                    type: object
+                required:
+                - defaults
+                - schema
+                type: object
             required:
             - destination
             - sources
+            - targets
             type: object
           status:
-            description: ManagementClusterConfigurationStatus defines the observed
-              state of ManagementClusterConfiguration.
+            description: KonfigurationStatus defines the observed state of Konfiguration.
             properties:
               conditions:
                 items:
@@ -228,7 +253,7 @@ spec:
                   - type
                   type: object
                 type: array
-              disabledReconciles:
+              disabled:
                 items:
                   properties:
                     appName:
@@ -251,7 +276,7 @@ spec:
                   - target
                   type: object
                 type: array
-              failures:
+              failed:
                 items:
                   properties:
                     appName:
@@ -275,10 +300,6 @@ spec:
                 type: string
               lastReconciledAt:
                 type: string
-              misses:
-                items:
-                  type: string
-                type: array
               observedGeneration:
                 description: ObservedGeneration is the last observed generation.
                 format: int64

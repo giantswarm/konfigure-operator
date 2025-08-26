@@ -1,0 +1,42 @@
+apiVersion: konfigure.giantswarm.io/v1alpha1
+kind: Konfiguration
+metadata:
+  labels:
+    app.kubernetes.io/name: konfigure-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: konfiguration-sample
+spec:
+  targets:
+    schema:
+      reference:
+        name: konfigurationschema-sample
+        namespace: konfigure-operator-system
+    defaults:
+      variables:
+        - name: installation
+          value: golem
+    iterations:
+      app-operator:
+        variables:
+          - name: app
+            value: app-operator
+      chart-operator:
+        variables:
+          - name: app
+            value: chart-operator
+      dex-operator:
+        variables:
+          - name: app
+            value: dex-operator
+  destination:
+    namespace: default
+    naming:
+      suffix: laszlo
+  reconciliation:
+    interval: 1m
+    retryInterval: 10s
+  sources:
+    flux:
+      gitRepository:
+        name: "giantswarm-config"
+        namespace: "flux-giantswarm"
