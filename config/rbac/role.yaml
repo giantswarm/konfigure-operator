@@ -8,7 +8,6 @@ rules:
   - konfigure.giantswarm.io
   resources:
   - konfigurations
-  - managementclusterconfigurations
   verbs:
   - create
   - delete
@@ -21,14 +20,12 @@ rules:
   - konfigure.giantswarm.io
   resources:
   - konfigurations/finalizers
-  - managementclusterconfigurations/finalizers
   verbs:
   - update
 - apiGroups:
   - konfigure.giantswarm.io
   resources:
   - konfigurations/status
-  - managementclusterconfigurations/status
   verbs:
   - get
   - patch

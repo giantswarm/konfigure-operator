@@ -36,12 +36,6 @@ class KonfigurationCR(NamespacedKonfigureOperatorCR):
     kind = "Konfiguration"
 
 
-class ManagementClusterConfigurationCR(NamespacedKonfigureOperatorCR):
-    version = "konfigure.giantswarm.io/v1alpha1"
-    endpoint = "managementclusterconfigurations"
-    kind = "ManagementClusterConfiguration"
-
-
 @pytest.fixture(scope="module")
 def setup(kube_cluster: Cluster):
     # giantswarm catalog
@@ -138,7 +132,6 @@ def setup(kube_cluster: Cluster):
     # CRDs
     install_crd(kube_cluster, "../../config/crd/bases/konfigure.giantswarm.io_konfigurations.yaml")
     install_crd(kube_cluster, "../../config/crd/bases/konfigure.giantswarm.io_konfigurationschemas.yaml")
-    install_crd(kube_cluster, "../../config/crd/bases/konfigure.giantswarm.io_managementclusterconfigurations.yaml")
 
 
 @pytest.mark.functional
@@ -152,92 +145,6 @@ def test_api_working(kube_cluster: Cluster) -> None:
     """
     assert kube_cluster.kube_client is not None
     assert len(pykube.Node.objects(kube_cluster.kube_client)) >= 1
-
-
-@pytest.mark.functional
-def test_mcc_working(setup, kube_cluster: Cluster) -> None:
-    # THIS IS A MUST TO BE ABLE TO INTERACT WITH CRDs APPLIED DURING TEST COS THE ORIGINAL CLIENT ALREADY DID DISCOVERY
-    # AND IS BEING REUSED ACROSS TESTS
-    fresh_kube_client = ExistingCluster(kube_config_path=kube_cluster.kube_config_path).create()
-
-    cr: Dict[str, Any] = {
-        "apiVersion": ManagementClusterConfigurationCR.version,
-        "kind": ManagementClusterConfigurationCR.kind,
-        "metadata": {
-            "name": "example-1",
-            "namespace": "default",
-        },
-        "spec": {
-            "configuration": {
-                "applications": {
-                    "excludes": {
-                        "regexMatchers": [],
-                        "exactMatchers": []
-                    },
-                    "includes": {
-                        "regexMatchers": [],
-                        "exactMatchers": [
-                            "app-1"
-                        ]
-                    }
-                },
-                "cluster": {
-                    "name": "installation-1"
-                }
-            },
-            "destination": {
-                "naming": {
-                    "suffix": "ex1"
-                },
-                "namespace": "default"
-            },
-            "reconciliation": {
-                "retryInterval": "10s",
-                "interval": "1m"
-            },
-            "sources": {
-                "flux": {
-                    "gitRepository": {
-                        "namespace": "default",
-                        "name": "example-configs"
-                    }
-                }
-            },
-        }
-    }
-
-    example1 = ManagementClusterConfigurationCR(fresh_kube_client, cr)
-
-    if example1.exists():
-        example1.update()
-    else:
-        example1.create()
-
-    wait_for_objects_condition(
-        fresh_kube_client,
-        ManagementClusterConfigurationCR,
-        ["example-1"],
-        "default",
-        cr_ready,
-        120,
-        False,
-    )
-
-    cm_app_1_ex_1 = pykube.ConfigMap.objects(fresh_kube_client).get(name="app-1-ex1", namespace="default")
-
-    values_app_1_ex_1 = yaml.load(cm_app_1_ex_1.obj.get("data", {}).get("configmap-values.yaml", ""), SafeLoader)
-
-    assert values_app_1_ex_1.get("foo", "") == "override"
-    assert values_app_1_ex_1.get("bar", "") == "world"
-    assert values_app_1_ex_1.get("new", "") == "value"
-
-    assert values_app_1_ex_1.get("todo", {}).get("items", []) == ["item-1", "item-2", "item-3"]
-
-    secret_app_1_ex_1 = pykube.Secret.objects(fresh_kube_client).get(name="app-1-ex1", namespace="default")
-
-    secret_values_app_1_ex_1 = yaml.load(base64.b64decode(secret_app_1_ex_1.obj.get("data", {}).get("secret-values.yaml", "")), SafeLoader)
-
-    assert secret_values_app_1_ex_1.get("example") == "example"
 
 
 raw_schema = """---

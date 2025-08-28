@@ -5,7 +5,6 @@ go 1.24.0
 toolchain go1.24.2
 
 require (
-	github.com/deckarep/golang-set/v2 v2.7.0
 	github.com/giantswarm/konfigure v1.2.0
 	github.com/go-logr/logr v1.4.3
 	github.com/prometheus/client_golang v1.22.0

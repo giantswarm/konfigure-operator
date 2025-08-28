@@ -65,15 +65,6 @@ func RecordCondition(kind string, meta v1.ObjectMeta, condition v1.Condition) {
 	}
 }
 
-func RecordGeneration(obj *konfigurev1alpha1.ManagementClusterConfiguration, app string, success bool) {
-	var value float64
-	if success {
-		value = 1
-	}
-
-	generationGauge.WithLabelValues(obj.Kind, obj.Name, obj.Namespace, app, obj.Spec.Configuration.Cluster.Name, obj.Spec.Destination.Namespace).Set(value)
-}
-
 func RecordRendering(obj *konfigurev1alpha1.Konfiguration, iterationName string, success bool) {
 	var value float64
 	if success {

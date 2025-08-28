@@ -23,6 +23,10 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+const (
+	KonfigureOperatorFinalizer = "finalizers.giantswarm.io/konfigure-operator"
+)
+
 // KonfigurationSpec defines the desired state of Konfiguration.
 type KonfigurationSpec struct {
 	// Targets
@@ -78,6 +82,76 @@ type NameValuePair struct {
 	// Value
 	// +required
 	Value string `json:"value"`
+}
+
+type Destination struct {
+	// +required
+	Namespace string `json:"namespace"`
+	// +required
+	Naming NamingOptions `json:"naming"`
+}
+
+func (n *NamingOptions) Render(core string) string {
+	name := core
+
+	separator := ""
+	if n.UseSeparator {
+		separator = "-"
+	}
+
+	if n.Prefix != "" {
+		name = n.Prefix + separator + name
+	}
+
+	if n.Suffix != "" {
+		name = name + separator + n.Suffix
+	}
+
+	return name
+}
+
+type NamingOptions struct {
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]{0,62}[a-z0-9])?$"
+	Prefix string `json:"prefix,omitempty"`
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^[a-z0-9]([-a-z0-9]{0,62}[a-z0-9])?$"
+	Suffix string `json:"suffix,omitempty"`
+	// +kubebuilder:default:=true
+	// +optional
+	UseSeparator bool `json:"useSeparator,omitempty"`
+}
+
+type Reconciliation struct {
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
+	// +required
+	Interval metav1.Duration `json:"interval"`
+
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern="^([0-9]+(\\.[0-9]+)?(ms|s|m|h))+$"
+	// +optional
+	RetryInterval *metav1.Duration `json:"retryInterval,omitempty"`
+
+	// +kubebuilder:default:=false
+	// +optional
+	Suspend bool `json:"suspend,omitempty"`
+}
+
+type Sources struct {
+	Flux FluxSource `json:"flux,omitempty"`
+}
+
+type FluxSource struct {
+	// +required
+	GitRepository FluxSourceGitRepository `json:"gitRepository"`
+}
+
+type FluxSourceGitRepository struct {
+	// +required
+	Name string `json:"name"`
+	// +required
+	Namespace string `json:"namespace"`
 }
 
 // KonfigurationStatus defines the observed state of Konfiguration.
