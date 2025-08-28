@@ -165,13 +165,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.ManagementClusterConfigurationReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ManagementClusterConfiguration")
-		os.Exit(1)
-	}
 	if err = (&controller.KonfigurationReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
