@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2025-09-02
 
+### Removed
+
+- Remove `ManagementClusterConfiguration` CRD and it's control loop.
+  -  Replaced with the Generalized Configuration System with `Konfiguration` and `KonfigurationSchema` CRDs.
+
+### Changed
+
+- Bump `konfigure` to `v2.0.0`.
+
 ## [0.9.0] - 2025-08-26
 
 ### Added
