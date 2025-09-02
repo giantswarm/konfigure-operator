@@ -3,8 +3,8 @@ package konfigure
 import (
 	"context"
 
-	"github.com/giantswarm/konfigure/pkg/sopsenv"
-	sopsenvKey "github.com/giantswarm/konfigure/pkg/sopsenv/key"
+	"github.com/giantswarm/konfigure/v2/pkg/sopsenv"
+	sopsenvKey "github.com/giantswarm/konfigure/v2/pkg/sopsenv/key"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 

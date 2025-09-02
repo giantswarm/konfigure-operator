@@ -34,8 +34,8 @@ import (
 
 	"github.com/giantswarm/konfigure-operator/internal/konfigure"
 
-	konfigureModel "github.com/giantswarm/konfigure/pkg/model"
-	konfigureService "github.com/giantswarm/konfigure/pkg/service"
+	konfigureModel "github.com/giantswarm/konfigure/v2/pkg/model"
+	konfigureService "github.com/giantswarm/konfigure/v2/pkg/service"
 
 	apiMachineryErrors "k8s.io/apimachinery/pkg/api/errors"
 
