@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/giantswarm/konfigure/pkg/fluxupdater"
+	"github.com/giantswarm/konfigure/v2/pkg/fluxupdater"
 )
 
 func InitializeFluxUpdater(cacheDir, gitRepositoryNamespace, gitRepositoryName string) (*fluxupdater.FluxUpdater, error) {

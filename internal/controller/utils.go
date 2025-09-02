@@ -5,8 +5,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/giantswarm/konfigure/pkg/fluxupdater"
-	"github.com/giantswarm/konfigure/pkg/sopsenv"
+	"github.com/giantswarm/konfigure/v2/pkg/fluxupdater"
+	"github.com/giantswarm/konfigure/v2/pkg/sopsenv"
 
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 	"github.com/giantswarm/konfigure-operator/internal/konfigure"
