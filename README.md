@@ -1,5 +1,7 @@
 # konfigure-operator
 
+testing...
+
 Generate configurations based on the Giant Swarm configuration system.
 
 This operator is a thin wrapper around the configuration generator tool [konfigure](https://github.com/giantswarm/konfigure).
