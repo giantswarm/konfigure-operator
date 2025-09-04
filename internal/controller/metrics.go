@@ -9,7 +9,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
+	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/v2/api/v1alpha1"
 )
 
 var (

@@ -1,4 +1,4 @@
-module github.com/giantswarm/konfigure-operator
+module github.com/giantswarm/konfigure-operator/v2
 
 go 1.25.0
 
