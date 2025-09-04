@@ -32,7 +32,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/giantswarm/konfigure-operator/internal/konfigure"
+	"github.com/giantswarm/konfigure-operator/v2/internal/konfigure"
 
 	konfigureModel "github.com/giantswarm/konfigure/v2/pkg/model"
 	konfigureService "github.com/giantswarm/konfigure/v2/pkg/service"
@@ -44,14 +44,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
+	"github.com/giantswarm/konfigure-operator/v2/internal/controller/logic"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
+	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/v2/api/v1alpha1"
 )
 
 type KonfigurationReconcilerOptions struct {

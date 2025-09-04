@@ -8,8 +8,8 @@ import (
 	"github.com/giantswarm/konfigure/v2/pkg/fluxupdater"
 	"github.com/giantswarm/konfigure/v2/pkg/sopsenv"
 
-	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
-	"github.com/giantswarm/konfigure-operator/internal/konfigure"
+	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/v2/api/v1alpha1"
+	"github.com/giantswarm/konfigure-operator/v2/internal/konfigure"
 )
 
 func InitializeSopsEnv(ctx context.Context, dir string) (*sopsenv.SOPSEnv, error) {

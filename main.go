@@ -21,7 +21,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
+	"github.com/giantswarm/konfigure-operator/v2/internal/controller/logic"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -42,8 +42,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
-	"github.com/giantswarm/konfigure-operator/internal/controller"
+	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/v2/api/v1alpha1"
+	"github.com/giantswarm/konfigure-operator/v2/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
