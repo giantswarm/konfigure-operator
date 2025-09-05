@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Document `Konfiguration` and `KonfigurationSchema` CRDs.
+- Add `docs/examples/crs` folder with examples for the above CRs. Used in [Giant Swarm CRD docs](https://docs.giantswarm.io/reference/platform-api/crd/).
+
 ## [1.0.0] - 2025-09-02
 
 ### Removed
