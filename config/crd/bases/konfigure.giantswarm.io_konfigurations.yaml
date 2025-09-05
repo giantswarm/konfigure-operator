@@ -70,23 +70,34 @@ spec:
           metadata:
             type: object
           spec:
-            description: KonfigurationSpec defines the desired state of Konfiguration.
+            description: KonfigurationSpec defines the desired state of the Konfiguration.
             properties:
               destination:
-                description: Destination
+                description: Defines where and how to store the rendered konfigurations.
                 properties:
                   namespace:
+                    description: Defines the namespace where the rendered Kubernetes
+                      manifests will be applied.
                     type: string
                   naming:
+                    description: Defines rules on how to name the rendered Kubernetes
+                      manifests.
                     properties:
                       prefix:
+                        description: Prefix is prepended at the beginning of the iteration
+                          name.
                         pattern: ^[a-z0-9]([-a-z0-9]{0,62}[a-z0-9])?$
                         type: string
                       suffix:
+                        description: Suffix is appended to the end of the iteration
+                          name.
                         pattern: ^[a-z0-9]([-a-z0-9]{0,62}[a-z0-9])?$
                         type: string
                       useSeparator:
                         default: true
+                        description: |-
+                          UseSeparator indicates whether to separate the iteration name
+                          from the prefix and/or suffix with a single `-` character.
                         type: boolean
                     type: object
                 required:
@@ -94,30 +105,44 @@ spec:
                 - naming
                 type: object
               reconciliation:
-                description: Reconciliation
+                description: Defines how to reconcile the Konfiguration.
                 properties:
                   interval:
+                    description: The interval at which to reconcile the Konfiguration.
                     pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
                     type: string
                   retryInterval:
+                    description: The interval at which to retry a previously failed
+                      reconciliation.
                     pattern: ^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$
                     type: string
                   suspend:
                     default: false
+                    description: |-
+                      This flag tells the controller to suspend rendering the Konfiguration.
+                      It does not apply to already started executions. Default is false.
                     type: boolean
                 required:
                 - interval
                 type: object
               sources:
-                description: Sources
+                description: Defines where to find the source of the konfiguration
+                  that needs to be rendered.
                 properties:
                   flux:
+                    description: Defines to locate the source of the konfiguration
+                      structure as a Flux source.
                     properties:
                       gitRepository:
+                        description: Defines the source as a Flux GitRepository manifest.
                         properties:
                           name:
+                            description: Name of the referenced Flux GitRepository
+                              resource.
                             type: string
                           namespace:
+                            description: Namespace of the referenced Flux GitRepository
+                              resource.
                             type: string
                         required:
                         - name
@@ -128,18 +153,25 @@ spec:
                     type: object
                 type: object
               targets:
-                description: Targets
+                description: Define what konfigurations to render.
                 properties:
                   defaults:
+                    description: |-
+                      Define default inputs to be used for every single iteration.
+                      Individual iterations may override default inputs.
                     properties:
                       variables:
+                        description: Defines default variable inputs to be used for
+                          every single iteration.
                         items:
+                          description: NameValuePair is a simple structure for defining
+                            input fields by name and value.
                           properties:
                             name:
-                              description: Name
+                              description: Name of the input.
                               type: string
                             value:
-                              description: Value
+                              description: Value of the input.
                               type: string
                           required:
                           - name
@@ -149,15 +181,22 @@ spec:
                     type: object
                   iterations:
                     additionalProperties:
+                      description: Iteration defines information needed to a single
+                        konfiguration to render.
                       properties:
                         variables:
+                          description: |-
+                            Defines variable inputs specific for the given iteration.
+                            These variables are merged on top of the default variables, and thus may choose to override default ones.
                           items:
+                            description: NameValuePair is a simple structure for defining
+                              input fields by name and value.
                             properties:
                               name:
-                                description: Name
+                                description: Name of the input.
                                 type: string
                               value:
-                                description: Value
+                                description: Value of the input.
                                 type: string
                             required:
                             - name
@@ -165,18 +204,24 @@ spec:
                             type: object
                           type: array
                       type: object
+                    description: |-
+                      Defines what konfigurations to render. A single reconciliation loop iterates over each entry
+                      and renders the konfiguration, wraps them to Kubernetes manifests and enforces the state of those in the cluster.
                     type: object
                   schema:
-                    description: Schema
+                    description: Defines where to locate the KonfigurationSchema.
                     properties:
                       reference:
-                        description: Reference
+                        description: Defines where to locate the KonfigurationSchema
+                          as a Kubernetes manifest.
                         properties:
                           name:
-                            description: Name
+                            description: Defines the .metadata.name of the KonfigurationSchema
+                              Kubernetes manifest to fetch.
                             type: string
                           namespace:
-                            description: Namespace
+                            description: Defines the .metadata.namespace of the KonfigurationSchema
+                              Kubernetes manifest to fetch.
                             type: string
                         required:
                         - name
@@ -254,17 +299,30 @@ spec:
                   type: object
                 type: array
               disabled:
+                description: |-
+                  The list of rendered manifests that were not applied during the last full reconciliation,
+                  because their reconciliation is disabled via the `configuration.giantswarm.io/reconcile: disabled` label.
                 items:
+                  description: |-
+                    DisabledIteration defines information on managed Kubernetes manifests whose state is not currently enforced
+                    because they are disabled for reconciliation.
                   properties:
                     appName:
+                      description: The name of the iteration, that is the map key
+                        under .spec.targets.iterations.
                       type: string
                     kind:
+                      description: The kind of the iteration from the schema, generally
+                        ConfigMap or Secret.
                       type: string
                     target:
+                      description: Reference to the target manifest.
                       properties:
                         name:
+                          description: Name of the resource.
                           type: string
                         namespace:
+                          description: Namespace of the resource.
                           type: string
                       required:
                       - name
@@ -277,11 +335,17 @@ spec:
                   type: object
                 type: array
               failed:
+                description: The list of failed iterations during the last full reconciliation.
                 items:
+                  description: FailedIteration defines information of a single failed
+                    iteration.
                   properties:
                     appName:
+                      description: The name of the iteration, that is the map key
+                        under .spec.targets.iterations.
                       type: string
                     message:
+                      description: Informational message on the cause of the failure.
                       type: string
                   required:
                   - appName
@@ -299,6 +363,7 @@ spec:
                   Equals the Revision of the last attempted artifact from the referenced source.
                 type: string
               lastReconciledAt:
+                description: The last time the Konfiguration attempted reconciliation.
                 type: string
               observedGeneration:
                 description: ObservedGeneration is the last observed generation.
