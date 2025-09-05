@@ -1,16 +1,14 @@
 apiVersion: konfigure.giantswarm.io/v1alpha1
 kind: Konfiguration
 metadata:
-  labels:
-    app.kubernetes.io/name: konfigure-operator
-    app.kubernetes.io/managed-by: kustomize
   name: konfiguration-sample
+  namespace: default
 spec:
   targets:
     schema:
       reference:
         name: konfigurationschema-sample
-        namespace: konfigure-operator-system
+        namespace: default
     defaults:
       variables:
         - name: installation
@@ -31,12 +29,12 @@ spec:
   destination:
     namespace: default
     naming:
-      suffix: laszlo
+      suffix: sample
   reconciliation:
     interval: 1m
     retryInterval: 10s
   sources:
     flux:
       gitRepository:
-        name: "giantswarm-config"
-        namespace: "flux-giantswarm"
+        name: config-sample
+        namespace: default
