@@ -43,4 +43,3 @@ pytest -v
 The initial run will be slower, cos it installs Flux and waits for it to be ready.
 
 Consecutive local runs will update the test resources to make it faster. On CI, you always run against an empty cluster.
-g
