@@ -28,12 +28,18 @@ type KonfigurationSchemaSpec struct {
 	Raw Raw `json:"raw"`
 }
 
+// Raw defines simple ways of accessing a konfiguration schema.
 type Raw struct {
-	Remote  Remote `json:"remote,omitempty"`
+	// Provide the schema manifest from a remote location.
+	Remote Remote `json:"remote,omitempty"`
+
+	// Provide the raw manifest store under this field as a multiline string.
 	Content string `json:"content,omitempty"`
 }
 
+// Remote way of providing the schema manifest.
 type Remote struct {
+	// URL for the location of the schema manifest.
 	Url string `json:"url,omitempty"`
 }
 

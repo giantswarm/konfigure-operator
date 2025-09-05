@@ -43,12 +43,18 @@ spec:
             description: KonfigurationSchemaSpec defines the desired state of KonfigurationSchema.
             properties:
               raw:
+                description: Raw defines simple ways of accessing a konfiguration
+                  schema.
                 properties:
                   content:
+                    description: Provide the raw manifest store under this field as
+                      a multiline string.
                     type: string
                   remote:
+                    description: Provide the schema manifest from a remote location.
                     properties:
                       url:
+                        description: URL for the location of the schema manifest.
                         type: string
                     type: object
                 type: object
