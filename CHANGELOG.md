@@ -121,9 +121,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v1.0.1...HEAD
 
-### Changed
-
-- Migrate Chart.yaml annotations to new format as per https://docs.giantswarm.io/reference/platform-api/chart-metadata/
 [1.0.1]: https://github.com/giantswarm/konfigure-operator/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/giantswarm/konfigure-operator/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/giantswarm/konfigure-operator/compare/v0.8.0...v0.9.0
