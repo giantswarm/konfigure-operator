@@ -1,4 +1,4 @@
-apiVersion: v1
+apiVersion: v2
 name: konfigure-operator
 version: 1.0.1
 appVersion: 1.0.1
@@ -6,7 +6,6 @@ home: https://github.com/giantswarm/konfigure-operator
 description: A Helm chart for the konfigure-operator
 icon: https://s.giantswarm.io/app-icons/giantswarm/1/dark.svg
 annotations:
-  application.giantswarm.io/team: "honeybadger"
-restrictions:
-  clusterSingleton: false
-  namespaceSingleton: true
+  io.giantswarm.application.restrictions.cluster-singleton: 'false'
+  io.giantswarm.application.restrictions.namespace-singleton: 'true'
+  io.giantswarm.application.team: honeybadger
