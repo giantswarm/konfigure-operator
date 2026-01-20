@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Switch to using `.Chart.AppVersion` instead of `.Chart.Version`.
+
 ## [1.0.2] - 2026-01-16
 
 ### Changed
