@@ -46,6 +46,6 @@ Define image tag.
 {{- if .Values.image.tag }}
 {{- .Values.image.tag }}
 {{- else }}
-{{- .Chart.Version }}
+{{- .Chart.AppVersion }}
 {{- end }}
 {{- end }}
