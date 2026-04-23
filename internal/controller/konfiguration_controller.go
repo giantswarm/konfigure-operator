@@ -427,7 +427,7 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string,
 
 	// Check status code is 200 and bail out otherwise
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Unexpected status: %s", response.Status)
+		return "", fmt.Errorf("unexpected status: %s", response.Status)
 	}
 
 	// Decode to verify structure of the returned file is what we expect for the schema.
