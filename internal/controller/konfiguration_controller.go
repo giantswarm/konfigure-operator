@@ -440,7 +440,7 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string,
 	decoder := yaml.NewDecoder(response.Body)
 	decoder.KnownFields(true)
 
-	var schema model.Schema
+	var schema konfigureModel.Schema
 	if err := decoder.Decode(&schema); err != nil {
 		return "", err
 	}
