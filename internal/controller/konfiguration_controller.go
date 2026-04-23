@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"gopkg.in/yaml.v3"
 
 	v1 "k8s.io/api/core/v1"
 
@@ -423,6 +424,26 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string,
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
 	}(response.Body)
+
+	// Check status code is 200 and bail out otherwise
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Unexpected status: %s", response.Status)
+	}
+
+	// Decode to verify structure of the returned file is what we expect for the schema.
+	// Note, this should be implemented in the konfigure API -
+	// https://github.com/giantswarm/konfigure/blob/main/pkg/renderer/loader.go#L18-L30 -
+	// but for some reason Konfigure Operator uses the v2.0.0 version of the konfigure.
+	// Maybe we were / are waiting for something in order to bump, unless I figure out
+	// I place the change here.
+
+	decoder := yaml.NewDecoder(response.Body)
+	decoder.KnownFields(true)
+
+	var schema model.Schema
+	if err := decoder.Decode(&schema); err != nil {
+		return "", err
+	}
 
 	file, err := os.CreateTemp(KonfigurationSchemaDir, prefix)
 	if err != nil {
