@@ -66,7 +66,7 @@ includes: []`
 )
 
 func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
-	err := os.Mkdir(KonfigurationSchemaDir, 0755)
+	err := os.Mkdir(KonfigurationSchemaDir, 0750)
 	if err != nil && !os.IsExist(err) {
 		t.Fatalf("error creating %v directory: %v", KonfigurationSchemaDir, err)
 	}
@@ -75,10 +75,17 @@ func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
 		switch r.URL.Path {
 		case "/schema-good":
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, konfSchema)
+			_, err = fmt.Fprint(w, konfSchema)
+			if err != nil {
+				t.Fatalf("error writing response: %v", err)
+			}
 		case "/schema-malformed":
 			w.WriteHeader(http.StatusOK)
-			fmt.Fprint(w, malformedKonfSchema)
+			_, err = fmt.Fprint(w, malformedKonfSchema)
+			if err != nil {
+				t.Fatalf("error writing response: %v", err)
+			}
+
 		case "/schema-empty":
 			w.WriteHeader(http.StatusOK)
 		case "/schema-service-unavailable":
