@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/giantswarm/konfigure/v2 v2.0.0
 	github.com/go-logr/logr v1.4.3
+	github.com/google/go-cmp v0.7.0
 	github.com/prometheus/client_golang v1.22.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.34.0
@@ -94,7 +95,6 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/cel-go v0.26.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
