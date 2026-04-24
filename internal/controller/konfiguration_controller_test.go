@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
- 	"net/http/httptest"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -86,18 +86,18 @@ func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
 		default:
 			http.NotFound(w, r)
 		}
- 	}))
- 	defer server.Close()
+	}))
+	defer server.Close()
 
 	testCases := []struct {
 		expectedErr error
-		name 	    string
-		url  		string
+		name        string
+		url         string
 	}{
 		{
 			expectedErr: nil,
-			name: 		 "existing file",
-			url:  		 server.URL + "/schema-good",
+			name:        "existing file",
+			url:         server.URL + "/schema-good",
 		},
 		{
 			expectedErr: errors.New(`yaml: unmarshal errors:
@@ -109,18 +109,18 @@ func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
 		},
 		{
 			expectedErr: errors.New(`EOF`),
-			name: 		 "existing file, malformed body",
-			url:  		 server.URL + "/schema-empty",
+			name:        "existing file, malformed body",
+			url:         server.URL + "/schema-empty",
 		},
 		{
 			expectedErr: errors.New(`unexpected status: 404 Not Found`),
-			name:		 "non-existing file",
-			url:  		 server.URL + "/schema-missing",
+			name:        "non-existing file",
+			url:         server.URL + "/schema-missing",
 		},
 		{
 			expectedErr: errors.New(`unexpected status: 503 Service Unavailable`),
-			name: 		 "503 error on getting a file",
-			url:  		 server.URL + "/schema-service-unavailable",
+			name:        "503 error on getting a file",
+			url:         server.URL + "/schema-service-unavailable",
 		},
 	}
 
