@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -430,6 +431,10 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string,
 		return "", fmt.Errorf("unexpected status: %s", response.Status)
 	}
 
+	var buf bytes.Buffer
+
+	tee := io.TeeReader(response.Body, &buf)
+
 	// Decode to verify structure of the returned file is what we expect for the schema.
 	// Note, this should be implemented in the konfigure API -
 	// https://github.com/giantswarm/konfigure/blob/main/pkg/renderer/loader.go#L18-L30 -
@@ -437,7 +442,7 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string,
 	// Maybe we were / are waiting for something in order to bump, unless I figure out
 	// I place the change here.
 
-	decoder := yaml.NewDecoder(response.Body)
+	decoder := yaml.NewDecoder(tee)
 	decoder.KnownFields(true)
 
 	var schema konfigureModel.Schema
@@ -450,7 +455,7 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string,
 		return "", err
 	}
 
-	_, err = io.Copy(file, response.Body)
+	_, err = io.Copy(file, &buf)
 	if err != nil {
 		_ = os.Remove(file.Name())
 		return "", err
