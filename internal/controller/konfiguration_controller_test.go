@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -85,7 +86,6 @@ func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error writing response: %v", err)
 			}
-
 		case "/schema-empty":
 			w.WriteHeader(http.StatusOK)
 		case "/schema-service-unavailable":
@@ -148,6 +148,7 @@ func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
 			}
 
 			if tc.expectedErr == nil {
+				file = filepath.Clean(file)
 				data, err := os.ReadFile(file)
 				if err != nil {
 					t.Fatalf("unexpected error on reading %s file: %v", file, err)
