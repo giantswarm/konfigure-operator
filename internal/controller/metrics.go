@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"strconv"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -46,6 +47,14 @@ var (
 		},
 		[]string{"resource_kind", "resource_name", "resource_namespace"},
 	)
+
+	schemaFetchCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "konfigure_operator_schema_fetch_total",
+			Help: "Total number of remote KonfigurationSchema fetch attempts, labelled by URL and HTTP status code (0 on transport error).",
+		},
+		[]string{"schema_url", "status_code"},
+	)
 )
 
 func RecordConditions(gvk schema.GroupVersionKind, meta v1.ObjectMeta, conditions []v1.Condition) {
@@ -78,6 +87,10 @@ func RecordReconcileDuration(gvk schema.GroupVersionKind, meta v1.ObjectMeta, st
 	reconcileDurationHistogram.WithLabelValues(gvk.Kind, meta.Name, meta.Namespace).Observe(time.Since(start).Seconds())
 }
 
+func RecordSchemaFetch(schemaUrl string, statusCode int) {
+	schemaFetchCounter.WithLabelValues(schemaUrl, strconv.Itoa(statusCode)).Inc()
+}
+
 func init() {
-	metrics.Registry.MustRegister(conditionGauge, generationGauge, renderingGauge, reconcileDurationHistogram)
+	metrics.Registry.MustRegister(conditionGauge, generationGauge, renderingGauge, reconcileDurationHistogram, schemaFetchCounter)
 }
