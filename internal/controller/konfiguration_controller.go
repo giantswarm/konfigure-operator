@@ -419,8 +419,11 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string,
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
+		RecordSchemaFetch(url, 0)
 		return "", err
 	}
+
+	RecordSchemaFetch(url, response.StatusCode)
 
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
