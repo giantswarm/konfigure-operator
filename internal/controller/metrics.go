@@ -2,6 +2,7 @@ package controller
 
 import (
 	"strconv"
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -12,6 +13,73 @@ import (
 
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
+
+var renderingFixedLabels = []string{
+	"resource_kind",
+	"resource_name",
+	"resource_namespace",
+	"iteration_name",
+	"destination_namespace",
+}
+
+// renderingCollector is an unchecked Prometheus collector for the rendering
+// metric. Each iteration can declare its own custom labels via
+// Iteration.MetricLabels, so the Desc is built per-sample at scrape time.
+type renderingCollector struct {
+	mu      sync.Mutex
+	entries map[string]renderingEntry
+}
+
+type renderingEntry struct {
+	fixedLabelValues []string
+	customLabels     []konfigurev1alpha1.NameValuePair
+	value            float64
+}
+
+func newRenderingCollector() *renderingCollector {
+	return &renderingCollector{entries: make(map[string]renderingEntry)}
+}
+
+func (c *renderingCollector) Describe(_ chan<- *prometheus.Desc) {
+	// Unchecked: descs are built per-sample in Collect so that each iteration
+	// can carry its own custom label names.
+}
+
+func (c *renderingCollector) Collect(ch chan<- prometheus.Metric) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, entry := range c.entries {
+		size := len(renderingFixedLabels) + len(entry.customLabels)
+		labelNames := make([]string, 0, size)
+		labelValues := make([]string, 0, size)
+
+		labelNames = append(labelNames, renderingFixedLabels...)
+		labelValues = append(labelValues, entry.fixedLabelValues...)
+		for _, l := range entry.customLabels {
+			labelNames = append(labelNames, l.Name)
+			labelValues = append(labelValues, l.Value)
+		}
+
+		desc := prometheus.NewDesc(
+			"konfigure_operator_rendering",
+			"Configuration rendering status of a given iteration",
+			labelNames,
+			nil,
+		)
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, entry.value, labelValues...)
+	}
+}
+
+func (c *renderingCollector) set(key string, fixedLabelValues []string, customLabels []konfigurev1alpha1.NameValuePair, value float64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries[key] = renderingEntry{
+		fixedLabelValues: fixedLabelValues,
+		customLabels:     customLabels,
+		value:            value,
+	}
+}
 
 var (
 	conditionGauge = prometheus.NewGaugeVec(
@@ -30,13 +98,7 @@ var (
 		[]string{"resource_kind", "resource_name", "resource_namespace", "app_name", "config_cluster_name", "destination_namespace"},
 	)
 
-	renderingGauge = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "konfigure_operator_rendering",
-			Help: "Configuration rendering status of a given iteration",
-		},
-		[]string{"resource_kind", "resource_name", "resource_namespace", "iteration_name", "destination_namespace"},
-	)
+	renderingMetric = newRenderingCollector()
 
 	reconcileDurationHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -74,13 +136,22 @@ func RecordCondition(kind string, meta v1.ObjectMeta, condition v1.Condition) {
 	}
 }
 
-func RecordRendering(obj *konfigurev1alpha1.Konfiguration, iterationName string, success bool) {
+func RecordRendering(obj *konfigurev1alpha1.Konfiguration, iterationName string, metricLabels []konfigurev1alpha1.NameValuePair, success bool) {
 	var value float64
 	if success {
 		value = 1
 	}
 
-	renderingGauge.WithLabelValues(obj.Kind, obj.Name, obj.Namespace, iterationName, obj.Spec.Destination.Namespace).Set(value)
+	fixedLabelValues := []string{
+		obj.Kind,
+		obj.Name,
+		obj.Namespace,
+		iterationName,
+		obj.Spec.Destination.Namespace,
+	}
+
+	key := obj.Kind + "/" + obj.Namespace + "/" + obj.Name + "/" + iterationName
+	renderingMetric.set(key, fixedLabelValues, metricLabels, value)
 }
 
 func RecordReconcileDuration(gvk schema.GroupVersionKind, meta v1.ObjectMeta, start time.Time) {
@@ -92,5 +163,5 @@ func RecordSchemaFetch(schemaUrl string, statusCode int) {
 }
 
 func init() {
-	metrics.Registry.MustRegister(conditionGauge, generationGauge, renderingGauge, reconcileDurationHistogram, schemaFetchCounter)
+	metrics.Registry.MustRegister(conditionGauge, generationGauge, renderingMetric, reconcileDurationHistogram, schemaFetchCounter)
 }

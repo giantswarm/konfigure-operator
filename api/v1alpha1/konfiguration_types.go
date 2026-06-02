@@ -82,6 +82,9 @@ type Defaults struct {
 
 // Iteration defines information needed to a single konfiguration to render.
 type Iteration struct {
+	// Defines labels metrics for the given iteration are enriched with.
+    MetricLabels []NameValuePair `json:"metricLabels,omitempty"`
+
 	// Defines variable inputs specific for the given iteration.
 	// These variables are merged on top of the default variables, and thus may choose to override default ones.
 	Variables []NameValuePair `json:"variables,omitempty"`
