@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -96,8 +97,12 @@ func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
 	}))
 	defer server.Close()
 
+	closedServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	closedServer.Close()
+
 	testCases := []struct {
 		expectedErr error
+		wantAnyErr  bool
 		name        string
 		url         string
 	}{
@@ -129,25 +134,32 @@ func TestFetchKonfigurationSchemaFromUrl(t *testing.T) {
 			name:        "503 error on getting a file",
 			url:         server.URL + "/schema-service-unavailable",
 		},
+		{
+			wantAnyErr: true,
+			name:       "transport error returns error",
+			url:        closedServer.URL + "/schema-good",
+		},
 	}
 
 	rc := KonfigurationReconciler{}
 
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("case %d: %s", i, tc.name), func(t *testing.T) {
-			file, err := rc.fetchKonfigurationSchemaFromUrl("testing", tc.url)
+			file, err := rc.fetchKonfigurationSchemaFromUrl(context.Background(), "testing", tc.url)
 
 			if err != nil {
-				if tc.expectedErr == nil {
+				if tc.expectedErr == nil && !tc.wantAnyErr {
 					t.Fatalf("unexpected error on fetching %s schema: %v", tc.url, err)
 				}
 
-				if err.Error() != tc.expectedErr.Error() {
+				if tc.expectedErr != nil && err.Error() != tc.expectedErr.Error() {
 					t.Fatalf("error does not match, expected: %v, got: %v", tc.expectedErr, err)
 				}
+			} else if tc.expectedErr != nil || tc.wantAnyErr {
+				t.Fatalf("expected error but got none")
 			}
 
-			if tc.expectedErr == nil {
+			if tc.expectedErr == nil && !tc.wantAnyErr {
 				file = filepath.Clean(file)
 				data, err := os.ReadFile(file)
 				if err != nil {

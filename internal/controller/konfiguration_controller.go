@@ -56,6 +56,14 @@ import (
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
+// ponytail: clone DefaultTransport to keep ProxyFromEnvironment, TLS timeouts, etc.;
+// only override IdleConnTimeout to evict stale HTTP/2 connections before Fastly closes them.
+var schemaHTTPClient = func() *http.Client {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.IdleConnTimeout = 10 * time.Second
+	return &http.Client{Timeout: 10 * time.Second, Transport: t}
+}()
+
 type KonfigurationReconcilerOptions struct {
 	Verbose bool
 }
@@ -405,32 +413,42 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchema(ctx context.Context, 
 	prefix := fmt.Sprintf("%s-%s", spec.Reference.Namespace, spec.Reference.Name)
 
 	if schema.Spec.Raw.Remote.Url != "" {
-		return r.fetchKonfigurationSchemaFromUrl(prefix, schema.Spec.Raw.Remote.Url)
+		return r.fetchKonfigurationSchemaFromUrl(ctx, prefix, schema.Spec.Raw.Remote.Url)
 	}
 
 	return r.saveKonfigurationSchemaRawContentToTempFile(prefix, schema.Spec.Raw.Content)
 }
 
-func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(prefix string, url string) (string, error) {
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(ctx context.Context, prefix string, url string) (string, error) {
+	logger := log.FromContext(ctx)
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
 
-	response, err := http.DefaultClient.Do(request)
+	response, err := schemaHTTPClient.Do(request)
 	if err != nil {
-		RecordSchemaFetch(url, 0)
+		if ctx.Err() == nil {
+			RecordSchemaFetch(url, 0)
+		}
+		logger.Error(err, "schema fetch transport error", "url", url)
 		return "", err
 	}
-
-	RecordSchemaFetch(url, response.StatusCode)
 
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
 	}(response.Body)
 
-	// Check status code is 200 and bail out otherwise
+	RecordSchemaFetch(url, response.StatusCode)
+
 	if response.StatusCode != http.StatusOK {
+		body, readErr := io.ReadAll(response.Body)
+		if readErr != nil {
+			logger.Error(readErr, "schema fetch: failed to read error body", "url", url, "status", response.Status)
+		} else {
+			logger.Error(nil, "schema fetch returned non-OK status", "url", url, "status", response.Status, "body", string(body))
+		}
 		return "", fmt.Errorf("unexpected status: %s", response.Status)
 	}
 
