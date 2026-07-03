@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2-rc.1] - 2026-07-03
+
+### Added
+
+- Added timeout of 10s and idle connection timeout as 10s to the HTTP client fetching the konfiguration schema.
+- Added error logging to the schema fetching client on non 200 responses.
+
+### Removed
+
+- Removed `helm.sh/chart` label from common labels.
+
 ## [1.2.1] - 2026-04-29
 
 ### Changed
@@ -139,7 +150,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial implementation according to: https://github.com/giantswarm/rfc/pull/108
 
-[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2-rc.1...HEAD
+[1.2.2-rc.1]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.1...v1.2.2-rc.1
 [1.2.1]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/giantswarm/konfigure-operator/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/giantswarm/konfigure-operator/compare/v1.0.2...v1.1.0
