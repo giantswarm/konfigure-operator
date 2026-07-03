@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.2-rc.1] - 2026-07-03
 
+### Added
+
+- Added timeout of 10s and idle connection timeout as 10s to the HTTP client fetching the konfiguration schema.
+- Added error logging to the schema fetching client on non 200 responses.
+
+### Removed
+
+- Removed `helm.sh/chart` label from common labels.
+
 ## [1.2.1] - 2026-04-29
 
 ### Changed
