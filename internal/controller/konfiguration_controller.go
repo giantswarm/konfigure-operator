@@ -60,8 +60,8 @@ import (
 // only override IdleConnTimeout to evict stale HTTP/2 connections before Fastly closes them.
 var schemaHTTPClient = func() *http.Client {
 	t := http.DefaultTransport.(*http.Transport).Clone()
-	t.IdleConnTimeout = 10 * time.Second
-	return &http.Client{Timeout: 10 * time.Second, Transport: t}
+	t.IdleConnTimeout = 30 * time.Second
+	return &http.Client{Timeout: 30 * time.Second, Transport: t}
 }()
 
 type KonfigurationReconcilerOptions struct {
