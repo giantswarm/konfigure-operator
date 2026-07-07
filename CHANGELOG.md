@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Defaults to `30s`.
 - Added `--schema-fetch-idle-conn-timeout` to make the `KonfigurationSchema` fetches using `.spec.raw.remote.url`
   configurable. Defaults to `30s`.
+- Added `extraArgs` to Helm values to allow passing additional arguments to the controller. Defaults to `[]`.
 
 ## [1.2.2-rc.1] - 2026-07-03
 
