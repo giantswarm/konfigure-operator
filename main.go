@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"time"
 
 	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
 
@@ -67,6 +68,8 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
+	var schemaFetchTimeout time.Duration
+	var schemaFetchIdleConnTimeout time.Duration
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -78,11 +81,24 @@ func main() {
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.DurationVar(&schemaFetchTimeout, "schema-fetch-timeout", 30*time.Second,
+		"Timeout for the overall HTTP request when fetching a remote konfiguration schema.")
+	flag.DurationVar(&schemaFetchIdleConnTimeout, "schema-fetch-idle-conn-timeout", 30*time.Second,
+		"Idle connection timeout for the HTTP client used to fetch remote konfiguration schemas.")
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	if schemaFetchTimeout < 0 {
+		setupLog.Error(nil, "invalid value for --schema-fetch-timeout: must be >= 0", "value", schemaFetchTimeout)
+		os.Exit(1)
+	}
+	if schemaFetchIdleConnTimeout < 0 {
+		setupLog.Error(nil, "invalid value for --schema-fetch-idle-conn-timeout: must be >= 0", "value", schemaFetchIdleConnTimeout)
+		os.Exit(1)
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -169,7 +185,9 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		Options: controller.KonfigurationReconcilerOptions{
-			Verbose: verbose,
+			Verbose:                    verbose,
+			SchemaFetchTimeout:         schemaFetchTimeout,
+			SchemaFetchIdleConnTimeout: schemaFetchIdleConnTimeout,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Konfiguration")

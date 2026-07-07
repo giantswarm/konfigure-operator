@@ -27,6 +27,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -56,16 +57,15 @@ import (
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
-// ponytail: clone DefaultTransport to keep ProxyFromEnvironment, TLS timeouts, etc.;
-// only override IdleConnTimeout to evict stale HTTP/2 connections before Fastly closes them.
-var schemaHTTPClient = func() *http.Client {
-	t := http.DefaultTransport.(*http.Transport).Clone()
-	t.IdleConnTimeout = 30 * time.Second
-	return &http.Client{Timeout: 30 * time.Second, Transport: t}
-}()
-
 type KonfigurationReconcilerOptions struct {
 	Verbose bool
+
+	// SchemaFetchTimeout is the overall HTTP client timeout when fetching a remote konfiguration schema.
+	// Zero means no timeout.
+	SchemaFetchTimeout time.Duration
+	// SchemaFetchIdleConnTimeout is the transport idle connection timeout for the same HTTP client.
+	// Zero means no limit.
+	SchemaFetchIdleConnTimeout time.Duration
 }
 
 // KonfigurationReconciler reconciles a Konfiguration object
@@ -73,6 +73,20 @@ type KonfigurationReconciler struct {
 	client.Client
 	Scheme  *runtime.Scheme
 	Options KonfigurationReconcilerOptions
+
+	schemaHTTPClientOnce sync.Once
+	schemaHTTPClient     *http.Client
+}
+
+// ponytail: clone DefaultTransport to keep ProxyFromEnvironment, TLS timeouts, etc.;
+// only override IdleConnTimeout to evict stale HTTP/2 connections before Fastly closes them.
+func (r *KonfigurationReconciler) getSchemaHTTPClient() *http.Client {
+	r.schemaHTTPClientOnce.Do(func() {
+		t := http.DefaultTransport.(*http.Transport).Clone()
+		t.IdleConnTimeout = r.Options.SchemaFetchIdleConnTimeout
+		r.schemaHTTPClient = &http.Client{Timeout: r.Options.SchemaFetchTimeout, Transport: t}
+	})
+	return r.schemaHTTPClient
 }
 
 // +kubebuilder:rbac:groups=konfigure.giantswarm.io,resources=konfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -427,7 +441,7 @@ func (r *KonfigurationReconciler) fetchKonfigurationSchemaFromUrl(ctx context.Co
 		return "", err
 	}
 
-	response, err := schemaHTTPClient.Do(request)
+	response, err := r.getSchemaHTTPClient().Do(request)
 	if err != nil {
 		if ctx.Err() == nil {
 			RecordSchemaFetch(url, 0)
