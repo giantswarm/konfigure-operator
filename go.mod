@@ -179,12 +179,12 @@ require (
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/api v0.228.0 // indirect
 	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463 // indirect
@@ -214,3 +214,5 @@ replace github.com/cilium/ebpf v0.16.0 => github.com/cilium/ebpf v0.22.0
 replace github.com/moby/spdystream v0.5.0 => github.com/moby/spdystream v0.5.1
 
 replace github.com/yuin/goldmark v1.4.13 => github.com/yuin/goldmark v1.7.17
+
+replace golang.org/x/text v0.38.0 => golang.org/x/text v0.40.0
