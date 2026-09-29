@@ -216,3 +216,5 @@ replace github.com/moby/spdystream v0.5.0 => github.com/moby/spdystream v0.5.1
 replace github.com/yuin/goldmark v1.4.13 => github.com/yuin/goldmark v1.7.17
 
 replace golang.org/x/text v0.38.0 => golang.org/x/text v0.40.0
+
+replace github.com/moby/sys/user v0.4.0 => github.com/moby/sys/user v0.4.1
