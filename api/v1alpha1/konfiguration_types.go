@@ -193,6 +193,10 @@ type FluxSourceGitRepository struct {
 	Namespace string `json:"namespace"`
 }
 
+// ReconcileRequestAnnotation, when set to a new value on a Konfiguration, requests an
+// immediate reconciliation. The handled value is reported in status.lastHandledReconcileAt.
+const ReconcileRequestAnnotation = "reconcile.giantswarm.io/requestedAt"
+
 // KonfigurationStatus defines the observed state of Konfiguration.
 type KonfigurationStatus struct {
 	// ObservedGeneration is the last observed generation.
@@ -212,6 +216,11 @@ type KonfigurationStatus struct {
 	// The last time the Konfiguration attempted reconciliation.
 	// +optional
 	LastReconciledAt string `json:"lastReconciledAt,omitempty"`
+
+	// LastHandledReconcileAt is the value of the reconcile.giantswarm.io/requestedAt
+	// annotation that was last handled by the controller.
+	// +optional
+	LastHandledReconcileAt string `json:"lastHandledReconcileAt,omitempty"`
 
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

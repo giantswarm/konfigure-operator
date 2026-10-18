@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the `reconcile.giantswarm.io/requestedAt` annotation: changing its value triggers an immediate reconcile, and the handled value is reported in `status.lastHandledReconcileAt`.
+
 ## [1.2.2] - 2026-07-08
 
 ### Added

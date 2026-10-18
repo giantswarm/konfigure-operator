@@ -362,6 +362,11 @@ spec:
                   The last revision that was attempted for reconciliation.
                   Equals the Revision of the last attempted artifact from the referenced source.
                 type: string
+              lastHandledReconcileAt:
+                description: |-
+                  LastHandledReconcileAt is the value of the reconcile.giantswarm.io/requestedAt
+                  annotation that was last handled by the controller.
+                type: string
               lastReconciledAt:
                 description: The last time the Konfiguration attempted reconciliation.
                 type: string
