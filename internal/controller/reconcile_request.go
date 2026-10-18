@@ -8,7 +8,7 @@ import (
 )
 
 // ReconcileRequestedPredicate passes update events where the reconcile request
-// annotation value changed. Other event types pass, as with GenerationChangedPredicate.
+// annotation value changed, including the annotation being added or removed. Other event types pass, as with GenerationChangedPredicate.
 func ReconcileRequestedPredicate() predicate.Funcs {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {

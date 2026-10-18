@@ -81,8 +81,10 @@ func TestSetupFailureRecordsHandledReconcileRequest(t *testing.T) {
 	testCases := []struct {
 		name        string
 		annotations map[string]string
+		previous    string
 		want        string
 	}{
+		{name: "annotation absent keeps previous", previous: "prev", want: "prev"},
 		{name: "annotation present", annotations: map[string]string{konfigurev1alpha1.ReconcileRequestAnnotation: requested}, want: requested},
 		{name: "annotation absent", annotations: nil, want: ""},
 	}
@@ -90,6 +92,7 @@ func TestSetupFailureRecordsHandledReconcileRequest(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cr := konfWithAnnotations(1, tc.annotations)
+			cr.Status.LastHandledReconcileAt = tc.previous
 			c := fake.NewClientBuilder().
 				WithScheme(scheme).
 				WithObjects(cr).
