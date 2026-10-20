@@ -226,6 +226,7 @@ status:
       map has no entry for key "ssoPublicKey"'
   lastAppliedRevision: 9eb2f00e201df4f9d2b1e3a15e870e2b911726ab
   lastAttemptedRevision: c8f73a3b5ad0ddaad337d78f4e49ea8eae49d2a7
+  lastHandledReconcileAt: "2025-03-12T15:05:58.123456789Z"
   lastReconciledAt: "2025-03-12T15:06:07.572012492Z"
   observedGeneration: 4
 ```
@@ -250,6 +251,17 @@ occurred at `.lastReconciledAt` and at generation `.observedGeneration`.
 > ℹ️ Please note, that currently the operator is not subscribed to event of Flux `source-controller`. An update on the
 > source will not trigger a reconciliation. The intervals purely depend on `.spec.reconciliation` of the CR and the
 > outcome of the last reconciliation loop.
+
+A reconciliation can be requested on demand by setting the `reconcile.giantswarm.io/requestedAt` annotation to a new
+value, for example:
+
+```bash
+kubectl annotate konfiguration <name> reconcile.giantswarm.io/requestedAt="$(date -u +%FT%T.%NZ)" --overwrite
+```
+
+Any change of the value (including removing the annotation) triggers a reconciliation. Once handled, the operator copies
+the annotation value into `.status.lastHandledReconcileAt`, on both successful and failed reconciliations. While the
+object is suspended (`.spec.reconciliation.suspend`) nothing is handled and the field is left untouched.
 
 ## Development
 

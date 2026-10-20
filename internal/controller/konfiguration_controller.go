@@ -352,6 +352,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
+	recordHandledReconcileRequest(cr)
 
 	cr.Status.LastAttemptedRevision = revision
 
@@ -398,6 +399,7 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 func (r *KonfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.Konfiguration, err error) error {
 	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
+	recordHandledReconcileRequest(cr)
 
 	cr.Status.Conditions = []metav1.Condition{}
 
@@ -653,7 +655,7 @@ func (r *KonfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&konfigurev1alpha1.Konfiguration{}, builder.WithPredicates(
-			predicate.GenerationChangedPredicate{},
+			predicate.Or(predicate.GenerationChangedPredicate{}, ReconcileRequestedPredicate()),
 		)).
 		Named("konfiguration").
 		Complete(r)
