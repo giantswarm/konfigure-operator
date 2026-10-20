@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-20
+
 ### Added
 
 - Added the `reconcile.giantswarm.io/requestedAt` annotation: changing its value triggers an immediate reconcile, and the handled value is reported in `status.lastHandledReconcileAt`.
@@ -175,7 +177,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial implementation according to: https://github.com/giantswarm/rfc/pull/108
 
-[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2-rc.2...v1.2.2
 [1.2.2-rc.2]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2-rc.1...v1.2.2-rc.2
 [1.2.2-rc.1]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.1...v1.2.2-rc.1
