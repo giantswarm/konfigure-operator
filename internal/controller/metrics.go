@@ -13,13 +13,19 @@ import (
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 )
 
+const (
+	labelResourceKind      = "resource_kind"
+	labelResourceName      = "resource_name"
+	labelResourceNamespace = "resource_namespace"
+)
+
 var (
 	conditionGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "konfigure_operator_reconcile_condition",
 			Help: "The current condition status of a Konfigure Operator resource reconciliation.",
 		},
-		[]string{"resource_kind", "resource_name", "resource_namespace", "condition_type", "condition_status"},
+		[]string{labelResourceKind, labelResourceName, labelResourceNamespace, "condition_type", "condition_status"},
 	)
 
 	generationGauge = prometheus.NewGaugeVec(
@@ -27,7 +33,7 @@ var (
 			Name: "konfigure_operator_generation",
 			Help: "Configuration generation status of a given app",
 		},
-		[]string{"resource_kind", "resource_name", "resource_namespace", "app_name", "config_cluster_name", "destination_namespace"},
+		[]string{labelResourceKind, labelResourceName, labelResourceNamespace, "app_name", "config_cluster_name", "destination_namespace"},
 	)
 
 	renderingGauge = prometheus.NewGaugeVec(
@@ -35,7 +41,7 @@ var (
 			Name: "konfigure_operator_rendering",
 			Help: "Configuration rendering status of a given iteration",
 		},
-		[]string{"resource_kind", "resource_name", "resource_namespace", "iteration_name", "destination_namespace"},
+		[]string{labelResourceKind, labelResourceName, labelResourceNamespace, "iteration_name", "destination_namespace"},
 	)
 
 	reconcileDurationHistogram = prometheus.NewHistogramVec(
@@ -45,7 +51,7 @@ var (
 			// Use a histogram with 10 count buckets between 1ms - 1hour
 			Buckets: prometheus.ExponentialBucketsRange(10e-3, 1800, 10),
 		},
-		[]string{"resource_kind", "resource_name", "resource_namespace"},
+		[]string{labelResourceKind, labelResourceName, labelResourceNamespace},
 	)
 
 	schemaFetchCounter = prometheus.NewCounterVec(

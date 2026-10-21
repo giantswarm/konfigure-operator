@@ -141,7 +141,9 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{Requeue: true}, nil
+			// The finalizer update does not change the generation, so the watch
+			// predicate drops it: requeue explicitly to continue reconciling.
+			return ctrl.Result{RequeueAfter: time.Millisecond}, nil
 		}
 	} else {
 		// The object is being deleted
