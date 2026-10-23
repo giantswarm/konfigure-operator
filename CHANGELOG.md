@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Make pre-commit pass with `golangci-lint` 2.15.0: exclude `goconst` from test files, name the shared metric labels as constants, and requeue after adding the finalizer with `RequeueAfter` instead of the deprecated `Requeue` (SA1019).
 
+### Fixed
+
+- Fix ARM64 images.
+
 ## [1.3.0] - 2026-10-20
 
 ### Added
