@@ -6,9 +6,9 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
   cd "$SCRIPT_DIR"/../.. || exit
 
   make build-linux
-  cp konfigure-operator-linux konfigure-operator
+  cp konfigure-operator-linux konfigure-operator-linux-amd64
 
-  docker buildx build -t gsoci.azurecr.io/giantswarm/konfigure-operator:black .
+  docker buildx build --platform linux/amd64 -t gsoci.azurecr.io/giantswarm/konfigure-operator:black .
 
   kind load docker-image gsoci.azurecr.io/giantswarm/konfigure-operator:black
 
