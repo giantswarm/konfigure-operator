@@ -16,3 +16,5 @@ CVE-2026-78669 until=2026-11-11 # golang.org/x/net@v0.56.0
 CVE-2026-97032 until=2026-11-11 # golang.org/x/net@v0.56.0
 CVE-2026-78659 until=2026-11-11 # golang.org/x/net@v0.56.0
 CVE-2026-78660 until=2026-11-11 # golang.org/x/net@v0.56.0
+CVE-2026-107325 until=2026-11-27 # go.mongodb.org/mongo-driver@v1.17.9 since=2026-10-28
+CVE-2026-88031 until=2026-11-27 # go.mongodb.org/mongo-driver@v1.17.9 since=2026-10-28
