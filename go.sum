@@ -186,8 +186,8 @@ github.com/getsops/sops/v3 v3.10.2 h1:7t7lBXFcXJPsDMrpYoI36r8xIhjWUmEc8Qdjuwyo+W
 github.com/getsops/sops/v3 v3.10.2/go.mod h1:Dmtg1qKzFsAl+yqvMgjtnLGTC0l7RnSM6DDtFG7TEsk=
 github.com/giantswarm/konfigure/v2 v2.1.1 h1:Zz9dIDyrS2FYKL/1Cu+sRD4N4WWzKukJf0K/5+67rDY=
 github.com/giantswarm/konfigure/v2 v2.1.1/go.mod h1:THuQ867iW64z8av/CO/UDKDl+p3Cl8M6BR7N6z9pQuk=
-github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
-github.com/go-jose/go-jose/v4 v4.1.4/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
+github.com/go-jose/go-jose/v4 v4.1.6 h1:sNRkftxFJxwsILiQukqp5z83QBSmntVwmgRY7AqBDO4=
+github.com/go-jose/go-jose/v4 v4.1.6/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.4 h1:tG4xh9yMsRCAiodLVTxyrkzSZ9+o0L1Kg/+cPVcbP/8=
 github.com/go-logr/logr v1.4.4/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
