@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added the `reconcile.giantswarm.io/requestedAt` annotation: changing its value triggers an immediate reconcile, and the handled value is reported in `status.lastHandledReconcileAt`.
 
+### Changed
+
+- CI: architect orb 10.16.7, which pushes the chart to the git app catalogs with the architect GitHub App instead of the `catalogbot` account (giantswarm/giantswarm#34786).
+
 ## [1.2.2] - 2026-07-08
 
 ### Added
