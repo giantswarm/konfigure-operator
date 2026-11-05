@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - CI: architect orb 10.16.7, which pushes the chart to the git app catalogs with the architect GitHub App instead of the `catalogbot` account (giantswarm/giantswarm#34786).
+- Go dependencies: golang.org/x/net v0.62.0, google.golang.org/grpc v1.83.2, go.opentelemetry.io/otel v1.45.0, github.com/go-jose/go-jose/v4 v4.1.6, golang.org/x/crypto v0.58.0, aws-sdk-go-v2 eventstream v1.7.8 and service/s3 v1.97.3 plus their transitive updates, to fix the CVEs nancy reports. The minimum Go version is now 1.26.0. The `.nancy-ignore` entries for the fixed CVEs are removed.
 
 ## [1.2.2] - 2026-07-08
 
