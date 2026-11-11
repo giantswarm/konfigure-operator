@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add the `io.giantswarm.application.audience` and `io.giantswarm.application.managed` annotations and `keywords` to `Chart.yaml`, as the chart metadata standard requires.
 - Make pre-commit pass with `golangci-lint` 2.15.0: exclude `goconst` from test files, name the shared metric labels as constants, and requeue after adding the finalizer with `RequeueAfter` instead of the deprecated `Requeue` (SA1019).
 
 ### Fixed
