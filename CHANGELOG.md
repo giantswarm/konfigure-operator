@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Only reconcile Konfigurations in the privileged namespaces, set with the new `--privileged-namespaces` flag and `privilegedNamespaces` Helm value (default `giantswarm,flux-giantswarm`). Konfigurations in other namespaces are refused with reason `NamespaceNotAllowed` on their `Ready` condition and do not get the operator's finalizer. ConfigMaps and Secrets they rendered earlier are left in place. The operator exits at startup on an invalid privileged namespace. See [docs/privileged-namespaces.md](docs/privileged-namespaces.md).
+- Validate the GitRepository and KonfigurationSchema references and the destination namespace as DNS-1123 names, in the operator for every Konfiguration (reason `InvalidReference`) and in the CRD in `config/crd/bases`. On Kubernetes before 1.30, delete existing Konfigurations with invalid values before upgrading the CRD; see the Upgrading section of the docs.
+
 ### Changed
 
 - Add the `io.giantswarm.application.audience` and `io.giantswarm.application.managed` annotations and `keywords` to `Chart.yaml`, as the chart metadata standard requires.

@@ -19,6 +19,16 @@ from yaml import SafeLoader
 
 logger = logging.getLogger(__name__)
 
+# The operator only reconciles Konfigurations in its privileged namespaces (giantswarm and
+# flux-giantswarm by default). The GitRepository and schema stay in default on purpose.
+KONFIGURATION_NAMESPACE = "giantswarm"
+
+
+def ensure_namespace(kube_client: pykube.HTTPClient, name: str) -> None:
+    namespace = pykube.Namespace(kube_client, {"apiVersion": "v1", "kind": "Namespace", "metadata": {"name": name}})
+    if not namespace.exists():
+        namespace.create()
+
 
 class NamespacedKonfigureOperatorCR(NamespacedAPIObject, abc.ABC):
     pass
@@ -38,6 +48,8 @@ class KonfigurationCR(NamespacedKonfigureOperatorCR):
 
 @pytest.fixture(scope="module")
 def setup(kube_cluster: Cluster):
+    ensure_namespace(kube_cluster.kube_client, KONFIGURATION_NAMESPACE)
+
     # giantswarm catalog
     giantswarm_catalog = make_catalog_obj(kube_cluster.kube_client, "giantswarm", "default", "https://giantswarm.github.io/giantswarm-catalog/")
     if giantswarm_catalog.exists():
@@ -253,12 +265,70 @@ def test_konfiguration_working(setup, kube_cluster: Cluster) -> None:
     else:
         example_schema.create()
 
-    konfiguration_cr: Dict[str, Any] = {
+    konfiguration_cr = make_konfiguration("example-1", KONFIGURATION_NAMESPACE)
+
+    example_konfiguration = KonfigurationCR(fresh_kube_client, konfiguration_cr)
+
+    if example_konfiguration.exists():
+        example_konfiguration.update()
+    else:
+        example_konfiguration.create()
+
+    wait_for_objects_condition(
+        fresh_kube_client,
+        KonfigurationCR,
+        ["example-1"],
+        KONFIGURATION_NAMESPACE,
+        cr_ready,
+        120,
+        False,
+    )
+
+    cm_app_1_ex_1 = pykube.ConfigMap.objects(fresh_kube_client).get(name="app-1-kfg-ex1", namespace="default")
+
+    values_app_1_ex_1 = yaml.load(cm_app_1_ex_1.obj.get("data", {}).get("configmap-values.yaml", ""), SafeLoader)
+
+    assert values_app_1_ex_1.get("foo", "") == "override"
+    assert values_app_1_ex_1.get("bar", "") == "world"
+    assert values_app_1_ex_1.get("new", "") == "value"
+
+    assert values_app_1_ex_1.get("todo", {}).get("items", []) == ["item-1", "item-2", "item-3"]
+
+    secret_app_1_ex_1 = pykube.Secret.objects(fresh_kube_client).get(name="app-1-kfg-ex1", namespace="default")
+
+    secret_values_app_1_ex_1 = yaml.load(base64.b64decode(secret_app_1_ex_1.obj.get("data", {}).get("secret-values.yaml", "")), SafeLoader)
+
+    assert secret_values_app_1_ex_1.get("example") == "example"
+
+@pytest.mark.functional
+def test_konfiguration_refused_outside_privileged_namespaces(setup, kube_cluster: Cluster) -> None:
+    fresh_kube_client = ExistingCluster(kube_config_path=kube_cluster.kube_config_path).create()
+
+    konfiguration = KonfigurationCR(fresh_kube_client, make_konfiguration("example-unprivileged", "default"))
+
+    if konfiguration.exists():
+        konfiguration.update()
+    else:
+        konfiguration.create()
+
+    wait_for_objects_condition(
+        fresh_kube_client,
+        KonfigurationCR,
+        ["example-unprivileged"],
+        "default",
+        cr_refused_namespace_not_allowed,
+        60,
+        False,
+    )
+
+
+def make_konfiguration(name: str, namespace: str) -> Dict[str, Any]:
+    return {
         "apiVersion": KonfigurationCR.version,
         "kind": KonfigurationCR.kind,
         "metadata": {
-            "name": "example-1",
-            "namespace": "default",
+            "name": name,
+            "namespace": namespace,
         },
         "spec": {
             "targets": {
@@ -308,39 +378,6 @@ def test_konfiguration_working(setup, kube_cluster: Cluster) -> None:
         }
     }
 
-    example_konfiguration = KonfigurationCR(fresh_kube_client, konfiguration_cr)
-
-    if example_konfiguration.exists():
-        example_konfiguration.update()
-    else:
-        example_konfiguration.create()
-
-    wait_for_objects_condition(
-        fresh_kube_client,
-        KonfigurationCR,
-        ["example-1"],
-        "default",
-        cr_ready,
-        120,
-        False,
-    )
-
-    cm_app_1_ex_1 = pykube.ConfigMap.objects(fresh_kube_client).get(name="app-1-kfg-ex1", namespace="default")
-
-    values_app_1_ex_1 = yaml.load(cm_app_1_ex_1.obj.get("data", {}).get("configmap-values.yaml", ""), SafeLoader)
-
-    assert values_app_1_ex_1.get("foo", "") == "override"
-    assert values_app_1_ex_1.get("bar", "") == "world"
-    assert values_app_1_ex_1.get("new", "") == "value"
-
-    assert values_app_1_ex_1.get("todo", {}).get("items", []) == ["item-1", "item-2", "item-3"]
-
-    secret_app_1_ex_1 = pykube.Secret.objects(fresh_kube_client).get(name="app-1-kfg-ex1", namespace="default")
-
-    secret_values_app_1_ex_1 = yaml.load(base64.b64decode(secret_app_1_ex_1.obj.get("data", {}).get("secret-values.yaml", "")), SafeLoader)
-
-    assert secret_values_app_1_ex_1.get("example") == "example"
-
 
 def install_crd(kube_cluster, relative_path_to_crd_file: str) -> None:
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -354,6 +391,20 @@ def install_crd(kube_cluster, relative_path_to_crd_file: str) -> None:
         crd.update()
     else:
         crd.create()
+
+
+def cr_refused_namespace_not_allowed(cr: NamespacedKonfigureOperatorCR) -> bool:
+    conditions = cr.obj.get("status", {}).get("conditions", [])
+
+    for condition in conditions:
+        if (
+            condition.get("type", "") == "Ready"
+            and condition.get("status", "") == "False"
+            and condition.get("reason", "") == "NamespaceNotAllowed"
+        ):
+            return True
+
+    return False
 
 
 def cr_ready(cr: NamespacedKonfigureOperatorCR) -> bool:

@@ -22,8 +22,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
-
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -45,6 +43,7 @@ import (
 
 	konfigurev1alpha1 "github.com/giantswarm/konfigure-operator/api/v1alpha1"
 	"github.com/giantswarm/konfigure-operator/internal/controller"
+	"github.com/giantswarm/konfigure-operator/internal/controller/logic"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -70,6 +69,7 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	var schemaFetchTimeout time.Duration
 	var schemaFetchIdleConnTimeout time.Duration
+	var privilegedNamespaces string
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose logging.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -85,11 +85,25 @@ func main() {
 		"Timeout for the overall HTTP request when fetching a remote konfiguration schema.")
 	flag.DurationVar(&schemaFetchIdleConnTimeout, "schema-fetch-idle-conn-timeout", 30*time.Second,
 		"Idle connection timeout for the HTTP client used to fetch remote konfiguration schemas.")
+	flag.StringVar(&privilegedNamespaces, "privileged-namespaces", "giantswarm,flux-giantswarm",
+		"Comma-separated namespaces whose Konfigurations are reconciled. Konfigurations in all other namespaces are refused.")
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	// Set the logger before validating flags: controller-runtime drops anything logged earlier.
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	parsedPrivilegedNamespaces := logic.ParsePrivilegedNamespaces(privilegedNamespaces)
+	if err := logic.ValidateNamespaceList(parsedPrivilegedNamespaces); err != nil {
+		setupLog.Error(err, "invalid value for --privileged-namespaces")
+		os.Exit(1)
+	}
+	if len(parsedPrivilegedNamespaces) == 0 {
+		setupLog.Info("No privileged namespaces configured: every Konfiguration will be refused")
+	}
 
 	if schemaFetchTimeout < 0 {
 		setupLog.Error(nil, "invalid value for --schema-fetch-timeout: must be >= 0", "value", schemaFetchTimeout)
@@ -99,8 +113,6 @@ func main() {
 		setupLog.Error(nil, "invalid value for --schema-fetch-idle-conn-timeout: must be >= 0", "value", schemaFetchIdleConnTimeout)
 		os.Exit(1)
 	}
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -188,6 +200,7 @@ func main() {
 			Verbose:                    verbose,
 			SchemaFetchTimeout:         schemaFetchTimeout,
 			SchemaFetchIdleConnTimeout: schemaFetchIdleConnTimeout,
+			PrivilegedNamespaces:       parsedPrivilegedNamespaces,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Konfiguration")

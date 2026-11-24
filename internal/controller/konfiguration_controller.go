@@ -19,6 +19,7 @@ package controller
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -66,6 +67,10 @@ type KonfigurationReconcilerOptions struct {
 	// SchemaFetchIdleConnTimeout is the transport idle connection timeout for the same HTTP client.
 	// Zero means no limit.
 	SchemaFetchIdleConnTimeout time.Duration
+
+	// PrivilegedNamespaces lists the namespaces whose Konfigurations are reconciled. Konfigurations
+	// anywhere else are refused. Privileged Konfigurations may reference any namespace.
+	PrivilegedNamespaces []string
 }
 
 // KonfigurationReconciler reconciles a Konfiguration object
@@ -124,6 +129,36 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		RecordConditions(cr.GroupVersionKind(), cr.ObjectMeta, cr.Status.Conditions)
 	}()
 
+	// Only reconcile Konfigurations in the privileged namespaces, and refuse invalid references,
+	// before adding the finalizer or touching the SOPS keys, the source or the schema, and also for
+	// suspended Konfigurations, so every refused object shows it. Deletion is still handled below,
+	// so a finalizer added before an upgrade is removed. No requeue: the outcome cannot change
+	// without an update to the object or the operator's flags, and both trigger a reconcile.
+	if cr.DeletionTimestamp.IsZero() {
+		if err := logic.CheckReconcilable(cr, r.Options.PrivilegedNamespaces); err != nil {
+			reason := logic.InvalidReferenceReason
+			var namespaceErr *logic.NamespaceNotAllowedError
+			if errors.As(err, &namespaceErr) {
+				reason = logic.NamespaceNotAllowedReason
+			}
+
+			logger.Error(err, "Refusing to reconcile Konfiguration", "reason", reason)
+
+			if updateStatusErr := r.updateStatusOnRefusal(ctx, cr, reason, err.Error()); updateStatusErr != nil {
+				// Without CRD validation ratcheting (Kubernetes before 1.30), an object whose spec
+				// fails the CRD validation cannot get a status update either. Retrying cannot help.
+				if apiMachineryErrors.IsInvalid(updateStatusErr) {
+					logger.Error(updateStatusErr, "Failed to record refusal on Konfiguration")
+					return ctrl.Result{}, nil
+				}
+
+				return ctrl.Result{}, updateStatusErr
+			}
+
+			return ctrl.Result{}, nil
+		}
+	}
+
 	// Handle finalizer
 	if cr.DeletionTimestamp.IsZero() {
 		// The object is not being deleted, so if it does not have our finalizer,
@@ -161,6 +196,15 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if cr.Spec.Reconciliation.Suspend {
 		logger.Info("Reconciliation is suspended for this object, skipping until next update.")
+
+		// A refusal recorded earlier no longer applies once the check above passes.
+		if hadRefusal(cr) {
+			cr.Status.Conditions = nil
+			if err := r.Status().Update(ctx, cr); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -399,6 +443,32 @@ func (r *KonfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 func (r *KonfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context, cr *konfigurev1alpha1.Konfiguration, err error) error {
+	return r.updateStatusOnFailure(ctx, cr, logic.SetupFailedReason, fmt.Sprintf("Setup failed: %s", err.Error()))
+}
+
+// hadRefusal reports whether the Konfiguration's status still shows a refusal.
+func hadRefusal(cr *konfigurev1alpha1.Konfiguration) bool {
+	for _, condition := range cr.Status.Conditions {
+		if condition.Type == logic.ReadyCondition &&
+			(condition.Reason == logic.NamespaceNotAllowedReason || condition.Reason == logic.InvalidReferenceReason) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// updateStatusOnRefusal records a Konfiguration the operator will not reconcile. It also drops the
+// failed and disabled iterations of an earlier reconciliation, which no longer describe anything the
+// operator does with this object.
+func (r *KonfigurationReconciler) updateStatusOnRefusal(ctx context.Context, cr *konfigurev1alpha1.Konfiguration, reason, message string) error {
+	cr.Status.Failed = nil
+	cr.Status.Disabled = nil
+
+	return r.updateStatusOnFailure(ctx, cr, reason, message)
+}
+
+func (r *KonfigurationReconciler) updateStatusOnFailure(ctx context.Context, cr *konfigurev1alpha1.Konfiguration, reason, message string) error {
 	cr.Status.ObservedGeneration = cr.Generation
 	cr.Status.LastReconciledAt = time.Now().Format(time.RFC3339Nano)
 	recordHandledReconcileRequest(cr)
@@ -410,8 +480,8 @@ func (r *KonfigurationReconciler) updateStatusOnSetupFailure(ctx context.Context
 		Status:             metav1.ConditionFalse,
 		ObservedGeneration: cr.Generation,
 		LastTransitionTime: metav1.NewTime(time.Now().UTC().Truncate(time.Second)),
-		Reason:             logic.SetupFailedReason,
-		Message:            fmt.Sprintf("Setup failed: %s", err.Error()),
+		Reason:             reason,
+		Message:            message,
 	})
 
 	return r.Status().Update(ctx, cr)

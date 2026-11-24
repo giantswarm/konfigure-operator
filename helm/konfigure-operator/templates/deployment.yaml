@@ -30,6 +30,7 @@ spec:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=:8080
         - --metrics-secure=false
+        - --privileged-namespaces={{ join "," .Values.privilegedNamespaces }}
         {{- with .Values.extraArgs }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
