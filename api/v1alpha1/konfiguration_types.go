@@ -68,9 +68,13 @@ type Schema struct {
 // SchemaReference defines information on how to locate a KonfigurationSchema as a Kubernetes manifest.
 type SchemaReference struct {
 	// Defines the .metadata.name of the KonfigurationSchema Kubernetes manifest to fetch.
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`
 	Name string `json:"name"`
 
 	// Defines the .metadata.namespace of the KonfigurationSchema Kubernetes manifest to fetch.
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	Namespace string `json:"namespace"`
 }
 
@@ -102,6 +106,8 @@ type NameValuePair struct {
 type Destination struct {
 	// Defines the namespace where the rendered Kubernetes manifests will be applied.
 	// +required
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	Namespace string `json:"namespace"`
 
 	// Defines rules on how to name the rendered Kubernetes manifests.
@@ -186,10 +192,14 @@ type FluxSource struct {
 type FluxSourceGitRepository struct {
 	// Name of the referenced Flux GitRepository resource.
 	// +required
+	// +kubebuilder:validation:MaxLength=253
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`
 	Name string `json:"name"`
 
 	// Namespace of the referenced Flux GitRepository resource.
 	// +required
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	Namespace string `json:"namespace"`
 }
 

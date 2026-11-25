@@ -45,7 +45,7 @@ apiVersion: konfigure.giantswarm.io/v1alpha1
 kind: Konfiguration
 metadata:
   name: example-1
-  namespace: default
+  namespace: giantswarm
 spec:
   targets:
     schema:
@@ -174,6 +174,9 @@ This section contains information on the source that should be used to generate 
 Currently on Flux GitRepository sources are supported that should point to assembled Giant Swarm config repositories.
 
 The `.flux.gitRepository` section should contain the `.name` and `.namespace` of the Flux GitRepository resource to fetch.
+
+> ⚠️ The operator only reconciles Konfigurations in its privileged namespaces (by default `giantswarm` and
+> `flux-giantswarm`) and refuses all others. See [Privileged namespaces](docs/privileged-namespaces.md).
 
 ###### Temporarily disabling reconciliation of generated config maps and secret
 

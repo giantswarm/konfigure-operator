@@ -78,6 +78,8 @@ spec:
                   namespace:
                     description: Defines the namespace where the rendered Kubernetes
                       manifests will be applied.
+                    maxLength: 63
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                     type: string
                   naming:
                     description: Defines rules on how to name the rendered Kubernetes
@@ -139,10 +141,14 @@ spec:
                           name:
                             description: Name of the referenced Flux GitRepository
                               resource.
+                            maxLength: 253
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                           namespace:
                             description: Namespace of the referenced Flux GitRepository
                               resource.
+                            maxLength: 63
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                             type: string
                         required:
                         - name
@@ -218,10 +224,14 @@ spec:
                           name:
                             description: Defines the .metadata.name of the KonfigurationSchema
                               Kubernetes manifest to fetch.
+                            maxLength: 253
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
                             type: string
                           namespace:
                             description: Defines the .metadata.namespace of the KonfigurationSchema
                               Kubernetes manifest to fetch.
+                            maxLength: 63
+                            pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                             type: string
                         required:
                         - name

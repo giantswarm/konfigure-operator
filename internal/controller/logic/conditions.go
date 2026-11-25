@@ -14,4 +14,12 @@ const (
 
 	// SetupFailedReason represents the fact that the setup failed for reconciliation.
 	SetupFailedReason string = "SetupFailed"
+
+	// NamespaceNotAllowedReason represents the fact that the Konfiguration is outside the privileged
+	// namespaces, so the operator does not reconcile it.
+	NamespaceNotAllowedReason string = "NamespaceNotAllowed"
+
+	// InvalidReferenceReason represents the fact that the Konfiguration references a GitRepository,
+	// KonfigurationSchema or destination namespace that is not a valid name.
+	InvalidReferenceReason string = "InvalidReference"
 )

@@ -10,6 +10,14 @@ image:
 #     - --schema-fetch-timeout=10s
 extraArgs: []
 
+# Namespaces whose Konfigurations are reconciled. Konfigurations in every other namespace are
+# refused with reason NamespaceNotAllowed, because the operator renders them with the platform
+# SOPS keys. Only list namespaces where everyone who can create a Konfiguration may also read
+# every Secret the operator can decrypt.
+privilegedNamespaces:
+  - giantswarm
+  - flux-giantswarm
+
 resources:
   limits:
     cpu: 150m
