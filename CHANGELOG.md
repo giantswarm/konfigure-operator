@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-25
+
 ### Security
 
 - Only reconcile Konfigurations in the privileged namespaces, set with the new `--privileged-namespaces` flag and `privilegedNamespaces` Helm value (default `giantswarm,flux-giantswarm`). Konfigurations in other namespaces are refused with reason `NamespaceNotAllowed` on their `Ready` condition and do not get the operator's finalizer. ConfigMaps and Secrets they rendered earlier are left in place. The operator exits at startup on an invalid privileged namespace. See [docs/privileged-namespaces.md](docs/privileged-namespaces.md).
@@ -191,7 +193,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial implementation according to: https://github.com/giantswarm/rfc/pull/108
 
-[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/giantswarm/konfigure-operator/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/giantswarm/konfigure-operator/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2-rc.2...v1.2.2
 [1.2.2-rc.2]: https://github.com/giantswarm/konfigure-operator/compare/v1.2.2-rc.1...v1.2.2-rc.2
